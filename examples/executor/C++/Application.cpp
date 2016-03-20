@@ -148,10 +148,7 @@ void Application::onMessage( const FIX41::NewOrderSingle& message,
 }
 
 static double get_timestamp() {
-  struct timespec ts;
-  ::clock_gettime( CLOCK_REALTIME, &ts );
-  double v = (ts.tv_sec * 1000000 + ts.tv_nsec / 1000) % 1000000000;
-  return v;
+  return FIX::Util::Sys::TickCount::now().seconds();
 }
 
 void Application::onMessage( const FIX42::NewOrderSingle& message,
