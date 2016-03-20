@@ -35,11 +35,9 @@ namespace FIX
   template <typename T, typename Header = void, std::size_t HeaderAlignment = 16, std::size_t ItemAlignment = 8>
   class ItemStore
   {
-    template <typename O> struct SizeOf { // 0 for void
-      static char f(void*);
-      template <typename U> static char (&f(U*))[sizeof(U&) + 1];
-      static const std::size_t value = sizeof(f((O*)0)) - 1;
-    };
+    template<typename O> struct SizeOf { static const std::size_t value = sizeof(O); };
+    template<> struct SizeOf<void> { static const std::size_t value = 0; }; // 0 for void
+
     static const std::size_t HeaderBytes = SizeOf<Header>::value;
     template<typename U, std::size_t HB, std::size_t HA, std::size_t IA>
     struct Options
