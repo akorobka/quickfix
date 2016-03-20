@@ -110,12 +110,12 @@ namespace FIX
                              const DateTime& endTime,
                              int startDay,
                              int endDay,
-               const DateTime& time ) 
+                             const DateTime& time ) 
   {
     return isInRange( startTime, endTime, startDay, endDay, time, time.getWeekDay() );
   }
 
-  bool TimeRange::isInSameRange( const DateTime& start,
+  bool HEAVYUSE TimeRange::isInSameRange( const DateTime& start,
                                  const DateTime& end,
                                  const DateTime& time1,
                                  const DateTime& time2 )
@@ -153,7 +153,7 @@ namespace FIX
     }
   }
 
-  bool TimeRange::isInSameRange( const DateTime& startTime,
+  bool HEAVYUSE TimeRange::isInSameRange( const DateTime& startTime,
                                  const DateTime& endTime,
                                  int startDay,
                                  int endDay,

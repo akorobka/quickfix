@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <BOOST_INCLUDE>D:\Dev\boost_1_54_0</BOOST_INCLUDE>
+    <TBB_INCLUDE>D:\Dev\tbb42_20130725oss\include</TBB_INCLUDE>
+    <BOOST_LIB>D:\Dev\boost_1_54_0\lib32-msvc-11.0</BOOST_LIB>
+    <TBB_LIB>D:\Dev\tbb42_20130725oss\lib\ia32\vc11</TBB_LIB>
+    <TBB_DEPS>tbb.lib;tbbmalloc.lib</TBB_DEPS>
+    <WITH_BOOST>HAVE_BOOST=1</WITH_BOOST>
+    <WITH_TBB>HAVE_TBB=1</WITH_TBB>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(BOOST_INCLUDE);$(TBB_INCLUDE)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_VC80_UPGRADE=0x0710;%(PreprocessorDefinitions);$(WITH_BOOST);$(WITH_TBB)</PreprocessorDefinitions>
+    </ClCompile>
+    <Lib>
+      <AdditionalDependencies>$(TBB_DEPS)</AdditionalDependencies>
+    </Lib>
+    <Lib>
+      <AdditionalLibraryDirectories>$(TBB_LIB);$(BOOST_LIB)</AdditionalLibraryDirectories>
+    </Lib>
+    <Link>
+      <AdditionalLibraryDirectories>$(BOOST_LIB);$(TBB_LIB)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <BuildMacro Include="BOOST_INCLUDE">
+      <Value>$(BOOST_INCLUDE)</Value>
+    </BuildMacro>
+    <BuildMacro Include="TBB_INCLUDE">
+      <Value>$(TBB_INCLUDE)</Value>
+    </BuildMacro>
+    <BuildMacro Include="BOOST_LIB">
+      <Value>$(BOOST_LIB)</Value>
+    </BuildMacro>
+    <BuildMacro Include="TBB_LIB">
+      <Value>$(TBB_LIB)</Value>
+    </BuildMacro>
+    <BuildMacro Include="TBB_DEPS">
+      <Value>$(TBB_DEPS)</Value>
+    </BuildMacro>
+    <BuildMacro Include="WITH_BOOST">
+      <Value>$(WITH_BOOST)</Value>
+    </BuildMacro>
+    <BuildMacro Include="WITH_TBB">
+      <Value>$(WITH_TBB)</Value>
+    </BuildMacro>
+  </ItemGroup>
+</Project>

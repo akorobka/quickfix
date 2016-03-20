@@ -71,6 +71,9 @@ const char VALIDATE_LENGTH_AND_CHECKSUM[] = "ValidateLengthAndChecksum";
 const char VALIDATE_FIELDS_OUT_OF_ORDER[] = "ValidateFieldsOutOfOrder";
 const char VALIDATE_FIELDS_HAVE_VALUES[] = "ValidateFieldsHaveValues";
 const char VALIDATE_USER_DEFINED_FIELDS[] = "ValidateUserDefinedFields";
+const char VALIDATE_REQUIRED_FIELDS[] = "ValidateRequiredFields";
+const char VALIDATE_UNKNOWN_FIELDS[] = "ValidateUnknownFields";
+const char VALIDATE_UNKNOWN_MSGTYPE[] = "ValidateUnknownMsgType";
 const char LOGON_TIMEOUT[] = "LogonTimeout";
 const char LOGOUT_TIMEOUT[] = "LogoutTimeout";
 const char FILE_STORE_PATH[] = "FileStorePath";
@@ -135,7 +138,7 @@ public:
   SessionSettings( const std::string& file ) throw( ConfigError );
 
   /// Check if session setings are present
-  const bool has( const SessionID& ) const;
+  bool has( const SessionID& ) const;
 
   /// Get a dictionary for a session.
   const Dictionary& get( const SessionID& ) const throw( ConfigError );

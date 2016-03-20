@@ -69,6 +69,9 @@ public:
   void onEvent( const std::string& value )
   { insert( m_eventTable, value ); }
 
+  unsigned queryLogCapabilities() const { return LC_CLEAR | LC_BACKUP |
+                                          LC_INCOMING | LC_OUTGOING | LC_EVENT; }
+
 private:
   void init();
   void insert( const std::string& table, const std::string value );

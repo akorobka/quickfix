@@ -81,13 +81,27 @@ private:
 class Log
 {
 public:
+
+  enum Capabilities {
+	LC_CLEAR	= 0x01,
+	LC_BACKUP	= 0x02,
+	LC_INCOMING	= 0x04,
+	LC_OUTGOING	= 0x08,
+	LC_EVENT	= 0x10
+  };
+
   virtual ~Log() {}
 
   virtual void clear() = 0;
   virtual void backup() = 0;
   virtual void onIncoming( const std::string& ) = 0;
+  virtual void onIncoming( Sg::sg_buf_ptr b, int n) { onIncoming( Sg::toString(b, n) ); }
   virtual void onOutgoing( const std::string& ) = 0;
+  virtual void onOutgoing( Sg::sg_buf_ptr b, int n ) { onOutgoing( Sg::toString(b, n)); }
   virtual void onEvent( const std::string& ) = 0;
+
+  virtual unsigned queryLogCapabilities() const { return 0; }
+
 };
 /*! @} */
 
@@ -102,8 +116,10 @@ class NullLog : public Log
 public:
   void clear() {}
   void backup() {}
-  void onIncoming( const std::string& ) {}
-  void onOutgoing( const std::string& ) {}
+  virtual void onIncoming( const std::string& ) {}
+  virtual void onIncoming( Sg::sg_buf_ptr b, int n ) {}
+  virtual void onOutgoing( const std::string& ) {}
+  virtual void onOutgoing( Sg::sg_buf_ptr, int n ) {}
   void onEvent( const std::string& ) {}
 };
 
@@ -159,6 +175,8 @@ public:
               << ", " << "event>" << std::endl
               << "  (" << value << ")" << std::endl;
   }
+
+  unsigned queryLogCapabilities() const { return LC_INCOMING | LC_OUTGOING | LC_EVENT; }
 
   bool getMillisecondsInTimeStamp() const
   { return m_millisecondsInTimeStamp; }

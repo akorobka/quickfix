@@ -18,11 +18,17 @@ namespace FIX50SP1
 
   class Message : public FIX::Message
   {
+  protected:
+    Message( const FIX::MsgType::Pack& msgtype )
+    : FIX::Message(
+      FIX::BeginString::Pack("FIXT.1.1"), msgtype )
+     { Sequence::push_back_to( getHeader(), FIX::ApplVerID::Pack("8") ); }
+
   public:
     Message( const FIX::MsgType& msgtype )
     : FIX::Message(
-      FIX::BeginString("FIXT.1.1"), msgtype )
-     { getHeader().setField( FIX::ApplVerID("8") ); }
+      FIX::BeginString::Pack("FIXT.1.1"), msgtype )
+     { Sequence::push_back_to( getHeader(), FIX::ApplVerID::Pack("8") ); }
 
     Message(const FIX::Message& m) : FIX::Message(m) {}
     Message(const Message& m) : FIX::Message(m) {}

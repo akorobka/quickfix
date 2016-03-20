@@ -1,6 +1,6 @@
 AC_DEFUN([_MYSQL_CONFIG],[
   AC_ARG_WITH([mysql-config],
-  AS_HELP_STRING([--with-mysql-config=PATH], [Path to mysql_config program]),
+  AS_HELP_STRING([--with-mysql-config=PATH], [path to mysql_config program]),
                  [mysql_config="$withval"], [mysql_config=mysql_config])
 ])
 
@@ -16,7 +16,7 @@ AC_DEFUN([_MYSQL_CHECK],[
 AC_DEFUN([AX_LIB_MYSQL], [
     has_mysql=false
     AC_ARG_WITH(mysql,
-        [  --with-mysql           will use mysql_config to find mysql], 
+        [  --with-mysql            will use mysql_config to find mysql], 
         [if test $withval == "no"
          then
            has_mysql=false

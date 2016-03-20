@@ -141,6 +141,9 @@
     <ClInclude Include="Responder.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="PUGIXML_DOMDocument.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="Session.h">
       <Filter>Headers</Filter>
     </ClInclude>
@@ -2141,6 +2144,9 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Parser.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="PUGIXML_DOMDocument.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Session.cpp">

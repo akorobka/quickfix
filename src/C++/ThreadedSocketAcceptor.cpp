@@ -138,7 +138,7 @@ bool ThreadedSocketAcceptor::onPoll( double timeout )
 }
 
 void ThreadedSocketAcceptor::onStop()
-{ 
+{
   SocketToThread threads;
   SocketToThread::iterator i;
 

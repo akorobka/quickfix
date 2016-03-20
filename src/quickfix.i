@@ -1,5 +1,7 @@
 %module(directors="1") quickfix
 
+#define NOTHROW
+
 %exceptionclass FIX::Exception;
 
 %include typemaps.i
@@ -13,11 +15,14 @@
 %array_class(int, IntArray);
 
 %ignore _REENTRANT;
+%ignore FIX::SynchronizedApplication::m_mutex;
+%ignore FIX::FieldMap::FieldMap( const allocator_type&, const message_order&, const Options& );
 %rename(SocketInitiatorBase) FIX::SocketInitiator;
 %rename(SocketAcceptorBase) FIX::SocketAcceptor;
 
 %{
 #include <config.h>
+#include <Utility.h>
 #include <Exceptions.h>
 #include <Field.h>
 #include <Message.h>
@@ -39,6 +44,8 @@
 #include <Acceptor.h>
 #include <SocketAcceptor.h>
 #include <DataDictionary.h>
+typedef FIX::TYPE::Type Type;
+typedef FIX::String String;
 typedef FIX::UtcTimeStamp UtcTimeStamp;
 typedef FIX::UtcDate UtcDate;
 typedef FIX::UtcTimeOnly UtcTimeOnly;
@@ -61,6 +68,7 @@ typedef FIX::MessageStore MessageStore;
 typedef FIX::MessageStoreFactory MessageStoreFactory;
 typedef FIX::Mutex Mutex;
 typedef FIX::DOMDocumentPtr DOMDocumentPtr;
+typedef FIX::Sg Sg;
 %}
 
 %typedef DoubleField PriceField;

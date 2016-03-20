@@ -46,4 +46,5 @@ throw( MessageParseError )
 
   return true;
 }
+
 }

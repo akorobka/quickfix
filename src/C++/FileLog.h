@@ -69,6 +69,19 @@ private:
  */
 class FileLog : public Log
 {
+  static const std::size_t BufSize = 1024;
+  void store( std::ofstream& s, Sg::sg_buf_ptr b, int n )
+  {
+    std::filebuf* p = s.rdbuf();
+    m_timeStamp.clear();
+    UtcTimeStampConvertor::generate(m_timeStamp, UtcTimeStamp(), m_millisecondsInTimeStamp);
+    p->sputn(m_timeStamp.c_str(), m_timeStamp.size());
+    p->sputn(" : ", 3);
+    for (int i = 0; i < n; i++) p->sputn((char*)IOV_BUF(b[i]), IOV_LEN(b[i]));
+    p->sputc('\n');
+    p->pubsync();
+  }
+
 public:
   FileLog( const std::string& path );
   FileLog( const std::string& path, const std::string& backupPath );
@@ -80,15 +93,36 @@ public:
   void backup();
 
   void onIncoming( const std::string& value )
-  { m_messages << UtcTimeStampConvertor::convert(UtcTimeStamp(), m_millisecondsInTimeStamp) << " : " << value << std::endl; }
+  {
+    Sg::sg_buf_t b = IOV_BUF_INITIALIZER( String::c_str(value), 
+                                          String::length(value) );
+    store( m_messages, &b, 1 );
+  }
+  void onIncoming( Sg::sg_buf_ptr b, int n )
+  {
+    store( m_messages, b, n );
+  }
+
   void onOutgoing( const std::string& value )
-  { m_messages << UtcTimeStampConvertor::convert(UtcTimeStamp(), m_millisecondsInTimeStamp) << " : " << value << std::endl; }
+  {
+    Sg::sg_buf_t b = IOV_BUF_INITIALIZER( String::c_str(value),
+                                          String::length(value) );
+    store( m_messages, &b, 1 );
+  }
+  void onOutgoing( Sg::sg_buf_ptr b, int n )
+  {
+    store( m_messages, b, n );
+  }
+
   void onEvent( const std::string& value )
   {
-    UtcTimeStamp now;
-    m_event << UtcTimeStampConvertor::convert( now, m_millisecondsInTimeStamp )
-            << " : " << value << std::endl;
+    Sg::sg_buf_t b = IOV_BUF_INITIALIZER( String::c_str(value), 
+                                          String::length(value) );
+    store( m_event, &b, 1 );
   }
+
+  unsigned queryLogCapabilities() const { return LC_CLEAR | LC_BACKUP |
+					  LC_INCOMING | LC_OUTGOING | LC_EVENT; }
 
   bool getMillisecondsInTimeStamp() const
   { return m_millisecondsInTimeStamp; }
@@ -105,7 +139,10 @@ private:
   std::string m_eventFileName;
   std::string m_fullPrefix;
   std::string m_fullBackupPrefix;
+  std::string m_timeStamp;
   bool m_millisecondsInTimeStamp;
+  char m_messageBuf[BufSize];
+  char m_eventBuf[BufSize];
 };
 }
 

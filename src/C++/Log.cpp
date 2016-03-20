@@ -48,7 +48,7 @@ Log* ScreenLogFactory::create( const SessionID& sessionID )
 }
 
 void ScreenLogFactory::init( const Dictionary& settings, bool& incoming, bool& outgoing, bool& event )
-{  
+{
   if( m_useSettings )
   {
     incoming = true;
@@ -74,4 +74,5 @@ void ScreenLogFactory::destroy( Log* pLog )
 {
   delete pLog;
 }
+
 } //namespace FIX

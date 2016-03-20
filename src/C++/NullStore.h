@@ -61,6 +61,7 @@ public:
   NullStore() : m_nextSenderMsgSeqNum( 1 ), m_nextTargetMsgSeqNum( 1 ) {}
 
   bool set( int, const std::string& ) throw ( IOException );
+  bool set( int, Sg::sg_buf_ptr, int n ) throw ( IOException );
   void get( int, int, std::vector < std::string > & ) const throw ( IOException );
 
   int getNextSenderMsgSeqNum() const throw ( IOException )
@@ -76,22 +77,16 @@ public:
   void incrNextTargetMsgSeqNum() throw ( IOException )
   { ++m_nextTargetMsgSeqNum; }
 
-  void setCreationTime( const UtcTimeStamp& creationTime ) throw ( IOException )
-  { m_creationTime = creationTime; }
-  UtcTimeStamp getCreationTime() const throw ( IOException )
-  { return m_creationTime; }
-
   void reset() throw ( IOException )
   {
     m_nextSenderMsgSeqNum = 1; m_nextTargetMsgSeqNum = 1;
-    m_creationTime.setCurrent();
+    setCreationTime( UtcTimeStamp() );
   }
   void refresh() throw ( IOException ) {}
 
 private:
   int m_nextSenderMsgSeqNum;
   int m_nextTargetMsgSeqNum;
-  UtcTimeStamp m_creationTime;
 };
 }
 

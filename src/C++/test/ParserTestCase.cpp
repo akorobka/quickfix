@@ -58,26 +58,27 @@ struct extractLengthFixture
 
 TEST_FIXTURE(extractLengthFixture, extractLength)
 {
-  int length = 0;
-  std::string::size_type pos = 0;
-
-  CHECK( object.extractLength(length, pos, normalLength) );
-  CHECK_EQUAL( 12, length );
-  CHECK_EQUAL( 15, (int)pos );
+  std::size_t pos;
 
   pos = 0;
-  CHECK_THROW( object.extractLength(length, pos, badLength), MessageParseError );
+  CHECK( (pos = object.extractLength( normalLength.c_str(), normalLength.length()) ) );
+  CHECK_EQUAL( 27, (int)pos );
 
-  CHECK_EQUAL( 0, (int)pos );
-  CHECK_THROW( object.extractLength(length, pos, negativeLength), MessageParseError );
-
-  CHECK_EQUAL( 0, (int)pos );
-  object.extractLength(length, pos, incomplete_1);
-
-  object.extractLength(length, pos, incomplete_2);
+  pos = 0;
+  CHECK_THROW( (pos = object.extractLength( badLength.c_str(), badLength.length())), MessageParseError );
   CHECK_EQUAL( 0, (int)pos );
 
-  CHECK( !object.extractLength(length, pos, "") );
+  pos = 0;
+  CHECK_THROW( (pos = object.extractLength( negativeLength.c_str(), negativeLength.length())), MessageParseError );
+  CHECK_EQUAL( 0, (int)pos );
+
+  pos = object.extractLength( incomplete_1.c_str(), incomplete_1.length());
+  CHECK_EQUAL( 0, (int)pos );
+
+  pos = object.extractLength( incomplete_2.c_str(), incomplete_2.length());
+  CHECK_EQUAL( 0, (int)pos );
+
+  CHECK( 0 == object.extractLength( "", 0) );
 }
 
 struct readFixMessageFixture

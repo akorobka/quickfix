@@ -17,6 +17,7 @@
 **
 ****************************************************************************/
 
+#include <string.h>
 #ifdef _MSC_VER
 #include "stdafx.h"
 #else
@@ -30,74 +31,32 @@
 
 namespace FIX
 {
-bool Parser::extractLength( int& length, std::string::size_type& pos,
-                            const std::string& buffer )
+
+std::size_t Parser::extractLength( const char* msg, std::size_t sz )
 throw( MessageParseError )
 {
-  if( !buffer.size() ) return false;
-
-  std::string::size_type startPos = buffer.find( "\0019=", 0 );
-  if( startPos == std::string::npos ) return false;
-  startPos += 3;
-  std::string::size_type endPos = buffer.find( "\001", startPos );
-  if( endPos == std::string::npos ) return false;
-
-  std::string strLength( buffer, startPos, endPos - startPos );
-
-  try
+  if( LIKELY(sz > 3) )
   {
-    length = IntConvertor::convert( strLength );
-    if( length < 0 ) throw MessageParseError();
-  }
-  catch( FieldConvertError& )
-  { throw MessageParseError(); }
-
-  pos = endPos + 1;
-  return true;
-}
-
-bool Parser::readFixMessage( std::string& str )
-throw( MessageParseError )
-{
-  std::string::size_type pos = 0;
-
-  if( m_buffer.length() < 2 ) return false;
-  pos = m_buffer.find( "8=" );
-  if( pos == std::string::npos ) return false;
-  m_buffer.erase( 0, pos );
-
-  int length = 0;
-
-  try
-  {
-    if( extractLength(length, pos, m_buffer) )
+    const char* p = Util::CharBuffer::memmem(msg, sz, "\0019=", 3);
+    if( LIKELY(NULL != p) )
     {
-      pos += length;
-      if( m_buffer.size() < pos )
-        return false;
+      std::size_t startPos = p - msg + 3;
+      p = (const char*)::memchr( p + 3, '\001', sz - startPos);
+      if( LIKELY(NULL != p) )
+      {
+        int length = 0;
+        std::size_t endPos = p - msg;
+    
+        if( PositiveIntConvertor::parse(msg + startPos, p, length) )
+          return endPos + 1 + length;
 
-      pos = m_buffer.find( "\00110=", pos-1 );
-      if( pos == std::string::npos ) return false;
-      pos += 4;
-      pos = m_buffer.find( "\001", pos );
-      if( pos == std::string::npos ) return false;
-      pos += 1;
-
-      str.assign( m_buffer, 0, pos );
-      m_buffer.erase( 0, pos );
-      return true;
+        msg += startPos;
+        throw MessageParseError( std::string("Invalid BodyLength field ")
+                               + std::string(msg, p - msg) );
+      }
     }
   }
-  catch( MessageParseError& e )
-  {
-    if( length > 0 )
-      m_buffer.erase( 0, pos + length );
-    else
-      m_buffer.erase();
-
-    throw e;
-  }
-
-  return false;
+  return 0;
 }
+
 }

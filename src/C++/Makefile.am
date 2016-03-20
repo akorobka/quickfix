@@ -1,11 +1,12 @@
 SUBDIRS = test
 
+pkgincludedir=$(includedir)/quickfix
+
 LEX += -+ -olex.yy.c
 
 lib_LTLIBRARIES = libquickfix.la
 libquickfix_la_SOURCES = \
-	Allocator.h \
-	AtomicCount.h \
+	Config.h \
 	Session.cpp \
 	Session.h \
 	TimeRange.cpp \
@@ -70,6 +71,7 @@ libquickfix_la_SOURCES = \
 	SessionSettings.h \
 	Application.h \
 	Field.h \
+	FieldConvertors.cpp \
 	FieldConvertors.h \
 	FieldNumbers.h \
 	FieldTypes.cpp \
@@ -98,10 +100,13 @@ libquickfix_la_SOURCES = \
 	Mutex.h \
 	Event.h \
 	Queue.h \
-	SharedArray.h \
 	Exceptions.h \
 	Utility.cpp \
 	Utility.h \
+        FixString.h \
+	ItemAllocator.h \
+	AtomicCount.h \
+	Container.h \
 	Values.h \
 	DeprecatedValues.h \
 	FlexLexer.h \
@@ -114,10 +119,15 @@ libquickfix_la_SOURCES = \
 	MessageCracker.h \
 	Responder.h
 
-BUILT_SOURCES = Allocator.h
-CLEANFILES = Allocator.h
-Allocator.h: Makefile
+BUILT_SOURCES = Config.h
+CLEANFILES = Config.h
+Config.h: Makefile $(top_builddir)/config.h
 	grep "_ALLOCATOR" $(top_builddir)/config.h >$@
+	grep "HAVE_BOOST" $(top_builddir)/config.h >>$@
+	grep "HAVE_TBB" $(top_builddir)/config.h >>$@
+	grep "ENABLE_SSO" $(top_builddir)/config.h >>$@
+	grep "ENABLE_FLAT_FIELDMAP" $(top_builddir)/config.h >>$@
+	grep "ENABLE_RELAXED_ORDERING" $(top_builddir)/config.h >>$@
 
 all-local:
 	rm -rf $(top_builddir)/lib/libquickfix.a

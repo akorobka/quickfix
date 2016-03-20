@@ -29,19 +29,50 @@ namespace FIX
 /// Unique session id consists of BeginString, SenderCompID and TargetCompID.
 class SessionID
 {
+  static inline std::string toString( Sg::sg_buf_t beginString,
+                                      Sg::sg_buf_t senderCompID,
+                                      Sg::sg_buf_t targetCompID,
+                                      Sg::sg_buf_ptr sessionQualifier )
+  {
+    std::string str;
+    str.reserve( Sg::size(beginString) + 1 +
+                 Sg::size(senderCompID) + 2 +
+                 Sg::size(targetCompID) +
+               ( sessionQualifier ? (Sg::size(*sessionQualifier) + 1) :  0 ) );
+    String::append(
+      String::append(
+        String::append(
+          str,
+          beginString
+        ).append(":", 1),
+        senderCompID
+      ).append("->", 2),
+      targetCompID
+    );
+    if( sessionQualifier )
+      String::append( str.append(":", 1), *sessionQualifier );
+    return str;
+  }
+
+  static inline bool toFIXT( Sg::sg_buf_t beginString )
+  {
+    Util::CharBuffer::Fixed<4> tag = { { 'F', 'I', 'X', 'T' } };
+    return NULL != Util::CharBuffer::find( tag, Sg::data<const char*>(beginString), 4 );
+  }
+
 public:
   SessionID()
   {
-    toString(m_frozenString);
+        toString(m_frozenString);
   }
 
   SessionID( const std::string& beginString,
              const std::string& senderCompID,
              const std::string& targetCompID,
              const std::string& sessionQualifier = "" )
-  : m_beginString( BeginString(beginString) ),
-    m_senderCompID( SenderCompID(senderCompID) ),
-    m_targetCompID( TargetCompID(targetCompID) ),
+  : m_beginString( String::c_str(beginString), String::length(beginString) ),
+    m_senderCompID( String::c_str(senderCompID), String::length(senderCompID) ),
+    m_targetCompID( String::c_str(targetCompID), String::length(targetCompID) ),
     m_sessionQualifier( sessionQualifier ),
     m_isFIXT(false)
   {
@@ -49,6 +80,18 @@ public:
     if( beginString.substr(0, 4) == "FIXT" )
       m_isFIXT = true;
   }
+
+  SessionID( Sg::sg_buf_t beginString,
+             Sg::sg_buf_t senderCompID,
+             Sg::sg_buf_t targetCompID,
+             Sg::sg_buf_ptr sessionQualifier = NULL )
+  : m_beginString( Sg::toString(beginString) ),
+    m_senderCompID( Sg::toString(senderCompID) ),
+    m_targetCompID( Sg::toString(targetCompID) ),
+    m_sessionQualifier( sessionQualifier ? Sg::toString(*sessionQualifier) : std::string() ),
+    m_isFIXT( toFIXT( beginString ) ),
+    m_frozenString( toString(beginString, senderCompID, targetCompID, sessionQualifier) )
+  {}
 
   const BeginString& getBeginString() const
     { return m_beginString; }
@@ -58,7 +101,7 @@ public:
     { return m_targetCompID; }
   const std::string& getSessionQualifier() const
     { return m_sessionQualifier; }
-  const bool isFIXT() const
+  bool isFIXT() const
     { return m_isFIXT; }
 
   /// Get a string representation of the SessionID
@@ -86,16 +129,23 @@ public:
       return;
     if( second == std::string::npos )
       return;
-    m_beginString = str.substr(0, first);
-    m_senderCompID = str.substr(first+1, second - first - 1);
+    m_beginString.setPacked(
+      BeginString::Pack( str.substr(0, first).data(), first ) );
+    m_senderCompID.setPacked(
+      SenderCompID::Pack( str.substr(first+1, second - first - 1).data(),
+                                              second - first - 1) );
     if( first == third )
     {
-      m_targetCompID = str.substr(second+2);
+      m_targetCompID.setPacked(
+        TargetCompID::Pack( str.substr(second+2).data(),
+                            str.length() - second - 2 ) );
       m_sessionQualifier = "";
     }
     else
     {
-      m_targetCompID = str.substr(second+2, third - second - 2);
+      m_targetCompID.setPacked(
+        TargetCompID::Pack( str.substr(second+2, third - second - 2).data(),
+                                                 third - second - 2) );
       m_sessionQualifier = str.substr(third+1);
     }
     toString(m_frozenString);
@@ -104,11 +154,12 @@ public:
   /// Get a string representation without making a copy
   std::string& toString( std::string& str ) const
   {
-    str = getBeginString().getValue() + ":" +
-          getSenderCompID().getValue() + "->" +
-          getTargetCompID().getValue();
-    if( m_sessionQualifier.size() )
-      str += ":" + m_sessionQualifier;
+    Sg::sg_buf_t beginStringBuf = m_beginString.getSgBuf();
+    Sg::sg_buf_t senderCompIDBuf = m_senderCompID.getSgBuf();
+    Sg::sg_buf_t targetCompIDBuf = m_targetCompID.getSgBuf();
+    Sg::sg_buf_t qualifier = String::toBuffer( m_sessionQualifier );
+    str = toString( beginStringBuf, senderCompIDBuf, targetCompIDBuf,
+                    Sg::size( qualifier ) ? &qualifier : NULL );
     return str;
   }
 
@@ -120,8 +171,11 @@ public:
 
   SessionID operator~() const
   {
-    return SessionID( m_beginString, SenderCompID( m_targetCompID ),
-                      TargetCompID( m_senderCompID ), m_sessionQualifier );
+    Sg::sg_buf_t qualifier = String::toBuffer( m_sessionQualifier );
+    return SessionID( m_beginString.getSgBuf(),
+                      m_targetCompID.getSgBuf(),
+                      m_senderCompID.getSgBuf(),
+                      Sg::size( qualifier ) ? &qualifier : NULL );
   }
 
 private:

@@ -45,7 +45,7 @@ public:
 
 private:
   void onConnect( SocketMonitor&, int socket )
-  {    
+  {
     m_strategy.onConnect( m_connector, socket );
   }
 
@@ -95,8 +95,16 @@ int SocketConnector::connect( const std::string& address, int port, bool noDelay
       socket_setsockopt( socket, SO_SNDBUF, sendBufSize );
     if( rcvBufSize )
       socket_setsockopt( socket, SO_RCVBUF, rcvBufSize );
-    m_monitor.addConnect( socket );
-    socket_connect( socket, address.c_str(), port );
+
+    if( socket_connect( socket, address.c_str(), port ) < 0 )
+    {
+      socket_close( socket );
+      socket = -1;
+    }
+    else
+    {
+      m_monitor.addConnect( socket );
+    }
   }
   return socket;
 }

@@ -56,8 +56,8 @@ public:
   int field() const { return m_field; }
   int delim() const { return m_delim; }
 
-  void addGroup( const Group& group );
-  void replaceGroup( unsigned num, const Group& group );
+  FieldMap& addGroup( const Group& group );
+  bool replaceGroup( unsigned num, const Group& group );
   Group& getGroup( unsigned num, Group& group ) const throw( FieldNotFound );
   void removeGroup( unsigned num, const Group& group );
   void removeGroup( const Group& group );

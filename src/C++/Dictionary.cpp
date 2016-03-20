@@ -37,7 +37,7 @@ throw( ConfigError, FieldConvertError )
 
   std::string result = i->second;
   if( capitalize )
-     std::transform(result.begin(), result.end(), result.begin(), toupper);
+     std::transform(result.begin(), result.end(), result.begin(), ::toupper);
 
   return result;
 }
@@ -45,51 +45,59 @@ throw( ConfigError, FieldConvertError )
 int Dictionary::getInt( const std::string& key ) const
 throw( ConfigError, FieldConvertError )
 {
+  Data::const_iterator i = m_data.find( string_toUpper(key) );
+  if ( i == m_data.end() ) throw ConfigError( key + " not defined" );
   try
   {
-    return IntConvertor::convert( getString(key) );
+    return IntConvertor::convert( i->second );
   }
   catch ( FieldConvertError& )
   {
-    throw ConfigError( "Illegal value " + getString(key) + " for " + key );
+    throw ConfigError( "Illegal value " + i->second + " for " + key );
   }
 }
 
 double Dictionary::getDouble( const std::string& key ) const
 throw( ConfigError, FieldConvertError )
 {
+  Data::const_iterator i = m_data.find( string_toUpper(key) );
+  if ( i == m_data.end() ) throw ConfigError( key + " not defined" );
   try
   {
-    return DoubleConvertor::convert( getString(key) );
+    return DoubleConvertor::convert( i->second );
   }
   catch ( FieldConvertError& )
   {
-    throw ConfigError( "Illegal value " + getString(key) + " for " + key );
+    throw ConfigError( "Illegal value " + i->second + " for " + key );
   }
 }
 
 bool Dictionary::getBool( const std::string& key ) const
 throw( ConfigError, FieldConvertError )
 {
+  Data::const_iterator i = m_data.find( string_toUpper(key) );
+  if ( i == m_data.end() ) throw ConfigError( key + " not defined" );
   try
   {
-    return BoolConvertor::convert( getString(key) );
+    return BoolConvertor::convert( i->second );
   }
   catch ( FieldConvertError& )
   {
-    throw ConfigError( "Illegal value " + getString(key) + " for " + key );
+    throw ConfigError( "Illegal value " + i->second + " for " + key );
   }
 }
 
 int Dictionary::getDay( const std::string& key ) const
 throw( ConfigError, FieldConvertError )
 {
+  Data::const_iterator i = m_data.find( string_toUpper(key) );
+  if ( i == m_data.end() ) throw ConfigError( key + " not defined" );
   try
   {
-    std::string value = getString(key);
+    std::string value = i->second;
     if( value.size() < 2 ) throw FieldConvertError(0);
     std::string abbr = value.substr(0, 2);
-    std::transform( abbr.begin(), abbr.end(), abbr.begin(), tolower );
+    std::transform( abbr.begin(), abbr.end(), abbr.begin(), ::tolower );
     if( abbr == "su" ) return 1;
     if( abbr == "mo" ) return 2;
     if( abbr == "tu" ) return 3;
@@ -101,7 +109,7 @@ throw( ConfigError, FieldConvertError )
   }
   catch ( FieldConvertError& )
   {
-    throw ConfigError( "Illegal value " + getString(key) + " for " + key );
+    throw ConfigError( "Illegal value " + i->second + " for " + key );
   }
   return -1;
 }
@@ -127,7 +135,7 @@ void Dictionary::setBool( const std::string& key, bool value )
 }
 
 void Dictionary::setDay( const std::string& key, int value )
-{  
+{
     switch( value )
     {
     case 1:
@@ -159,4 +167,5 @@ void Dictionary::merge( const Dictionary& toMerge )
     if ( m_data.find( i->first ) == m_data.end() )
       m_data[ i->first ] = i->second;
 }
+
 }

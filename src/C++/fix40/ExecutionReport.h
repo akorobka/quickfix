@@ -8,8 +8,9 @@ namespace FIX40
 
   class ExecutionReport : public Message
   {
+    static FIX::MsgType::Pack PackedType() { return FIX::MsgType::Pack("8"); }
   public:
-    ExecutionReport() : Message(MsgType()) {}
+    ExecutionReport() : Message(PackedType()) {}
     ExecutionReport(const FIX::Message& m) : Message(m) {}
     ExecutionReport(const Message& m) : Message(m) {}
     ExecutionReport(const ExecutionReport& m) : Message(m) {}
@@ -27,19 +28,46 @@ namespace FIX40
       const FIX::LastPx& aLastPx,
       const FIX::CumQty& aCumQty,
       const FIX::AvgPx& aAvgPx )
-    : Message(MsgType())
+    : Message(PackedType())
     {
-      set(aOrderID);
-      set(aExecID);
-      set(aExecTransType);
-      set(aOrdStatus);
-      set(aSymbol);
-      set(aSide);
-      set(aOrderQty);
-      set(aLastShares);
-      set(aLastPx);
-      set(aCumQty);
-      set(aAvgPx);
+      Sequence::push_back_to(*this, aAvgPx);
+      Sequence::push_back_to(*this, aCumQty);
+      Sequence::push_back_to(*this, aExecID);
+      Sequence::push_back_to(*this, aExecTransType);
+      Sequence::push_back_to(*this, aLastPx);
+      Sequence::push_back_to(*this, aLastShares);
+      Sequence::push_back_to(*this, aOrderID);
+      Sequence::push_back_to(*this, aOrderQty);
+      Sequence::push_back_to(*this, aOrdStatus);
+      Sequence::push_back_to(*this, aSide);
+      Sequence::push_back_to(*this, aSymbol);
+    }
+
+    ExecutionReport(
+      const FIX::OrderID::Pack& aOrderID,
+      const FIX::ExecID::Pack& aExecID,
+      const FIX::ExecTransType::Pack& aExecTransType,
+      const FIX::OrdStatus::Pack& aOrdStatus,
+      const FIX::Symbol::Pack& aSymbol,
+      const FIX::Side::Pack& aSide,
+      const FIX::OrderQty::Pack& aOrderQty,
+      const FIX::LastShares::Pack& aLastShares,
+      const FIX::LastPx::Pack& aLastPx,
+      const FIX::CumQty::Pack& aCumQty,
+      const FIX::AvgPx::Pack& aAvgPx )
+    : Message(PackedType())
+    {
+      Sequence::push_back_to(*this, aAvgPx);
+      Sequence::push_back_to(*this, aCumQty);
+      Sequence::push_back_to(*this, aExecID);
+      Sequence::push_back_to(*this, aExecTransType);
+      Sequence::push_back_to(*this, aLastPx);
+      Sequence::push_back_to(*this, aLastShares);
+      Sequence::push_back_to(*this, aOrderID);
+      Sequence::push_back_to(*this, aOrderQty);
+      Sequence::push_back_to(*this, aOrdStatus);
+      Sequence::push_back_to(*this, aSide);
+      Sequence::push_back_to(*this, aSymbol);
     }
 
     FIELD_SET(*this, FIX::OrderID);

@@ -19,89 +19,70 @@
 **
 ****************************************************************************/
 
-#ifndef ATOMIC_COUNT
-#define ATOMIC_COUNT
+#ifndef ATOMIC_COUNT_H
+#define ATOMIC_COUNT_H
 
 #include "Mutex.h"
 
 namespace FIX
 {
-  /// Atomic count class - consider using interlocked functions
 
-#ifdef ENABLE_BOOST_ATOMIC_COUNT
-
-#include <boost/smart_ptr/detail/atomic_count.hpp>
-typedef boost::detail::atomic_count atomic_count;
-
-#elif _MSC_VER 
-
-  //atomic counter based on interlocked functions for Win32
-  class atomic_count
+  class AtomicCount
   {
-  public:
-    explicit atomic_count( long v ): m_counter( v )
-    {
-    }
+    public:
+      typedef long value_type;
 
-    long operator++()
-    {
-      return ::InterlockedIncrement( &m_counter );
-    }
+      explicit AtomicCount( value_type v ) { m_value = v; }
 
-    long operator--()
-    {
-      return ::InterlockedDecrement( &m_counter );
-    }
+#ifdef HAVE_TBB
 
-    operator long() const
-    {
-      return static_cast<long const volatile &>( m_counter );
-    }
+      value_type operator++() { return ++m_value; }
+      value_type operator--() { return --m_value; }
+      operator value_type () const { return m_value; }
 
-  private:
+    private:
+      typedef tbb::atomic<value_type> counter_type;
 
-    atomic_count( atomic_count const & );
-    atomic_count & operator=( atomic_count const & );
+#elif defined (_MSC_VER)
 
-    long volatile m_counter;
-  };
+      value_type operator++() { return ::InterlockedIncrement( &m_value ); }
+      value_type operator--() { return ::InterlockedDecrement( &m_value ); }
+      operator value_type () const
+      { return (value_type volatile &)m_value; }
 
+    private:
+      typedef value_type counter_type;
+
+#elif defined (__GNUC__)
+
+      value_type operator++()
+      { return __sync_add_and_fetch( &m_value, 1); }
+      value_type operator--()
+      { return __sync_sub_and_fetch( &m_value, 1); }
+      operator value_type () const
+      { return (value_type volatile &)m_value; }
+
+    private:
+      typedef value_type counter_type;
 #else
-  // general purpose atomic counter using mutexes
-  class atomic_count
-  {
-  public:
-    explicit atomic_count( long v ): m_counter( v )
-    {
-    }
 
-    long operator++()
-    {
-      Locker _lock(m_mutex);
-      return ++m_counter;
-    }
+      value_type operator++()
+      { Locker l(m_mutex); return ++m_value; }
+      value_type operator--()
+      { Locker l(m_mutex); return --m_value; }
+      operator value_type () const
+      { return (value_type volatile &)m_value; }
 
-    long operator--()
-    {
-      Locker _lock(m_mutex);
-      return --m_counter;
-    }
-
-    operator long() const
-    {
-      return static_cast<long const volatile &>( m_counter );
-    }
-
-  private:
-
-    atomic_count( atomic_count const & );
-    atomic_count & operator=( atomic_count const & );
-
-    Mutex m_mutex;
-    long m_counter;
-  };
-
+    private:
+      typedef value_type counter_type;
+      Mutex m_mutex;
 #endif
+
+      AtomicCount( AtomicCount const & );
+      AtomicCount & operator=( AtomicCount const & );
+
+      counter_type m_value;
+  };
 
 }
 

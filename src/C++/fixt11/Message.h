@@ -49,10 +49,16 @@ namespace FIXT11
 
   class Message : public FIX::Message
   {
+  protected:
+    Message( const FIX::MsgType::Pack& msgtype )
+    : FIX::Message(
+      FIX::BeginString::Pack("FIXT.1.1"), msgtype )
+     {} 
+
   public:
     Message( const FIX::MsgType& msgtype )
     : FIX::Message(
-      FIX::BeginString("FIXT.1.1"), msgtype )
+      FIX::BeginString::Pack("FIXT.1.1"), msgtype )
      {} 
 
     Message(const FIX::Message& m) : FIX::Message(m) {}

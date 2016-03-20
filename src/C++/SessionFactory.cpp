@@ -223,13 +223,37 @@ ptr::shared_ptr<DataDictionary> SessionFactory::createDataDictionary(const Sessi
   ptr::shared_ptr<DataDictionary> pCopyOfDD = ptr::shared_ptr<DataDictionary>(new DataDictionary(*pDD));
 
   if( settings.has( VALIDATE_FIELDS_OUT_OF_ORDER ) )
-    pCopyOfDD->checkFieldsOutOfOrder( settings.getBool( VALIDATE_FIELDS_OUT_OF_ORDER ) );
+  {
+    pCopyOfDD->checkFieldsOutOfOrder
+    ( settings.getBool( VALIDATE_FIELDS_OUT_OF_ORDER ) );
+  }
   if( settings.has( VALIDATE_FIELDS_HAVE_VALUES ) )
-    pCopyOfDD->checkFieldsHaveValues( settings.getBool( VALIDATE_FIELDS_HAVE_VALUES ) );
+  {
+    pCopyOfDD->checkFieldsHaveValues
+    ( settings.getBool( VALIDATE_FIELDS_HAVE_VALUES ) );
+  }
   if( settings.has( VALIDATE_USER_DEFINED_FIELDS ) )
-    pCopyOfDD->checkUserDefinedFields( settings.getBool( VALIDATE_USER_DEFINED_FIELDS ) );
+  {
+    pCopyOfDD->checkUserDefinedFields
+    ( settings.getBool( VALIDATE_USER_DEFINED_FIELDS ) );
+  }
+  if( settings.has( VALIDATE_REQUIRED_FIELDS ) )
+  {
+    pCopyOfDD->checkRequiredFields
+    ( settings.getBool( VALIDATE_REQUIRED_FIELDS ) );
+  }
+  if( settings.has( VALIDATE_UNKNOWN_FIELDS ) )
+  {
+    pCopyOfDD->checkUnknownFields
+    ( settings.getBool( VALIDATE_UNKNOWN_FIELDS ) );
+  }
+  if( settings.has( VALIDATE_UNKNOWN_MSGTYPE ) )
+  {
+    pCopyOfDD->checkUnknownMsgType
+    ( settings.getBool( VALIDATE_UNKNOWN_MSGTYPE ) );
+  }
 
-  return pCopyOfDD;
+  return pCopyOfDD;    
 }
 
 void SessionFactory::processFixtDataDictionaries(const SessionID& sessionID, 
@@ -256,7 +280,7 @@ void SessionFactory::processFixtDataDictionaries(const SessionID& sessionID,
         if( offset == std::string::npos )
           throw ConfigError(std::string("Malformed ") + APP_DATA_DICTIONARY + ": " + key);
         std::string beginStringQualifier = key.substr(offset+1);
-        provider.addApplicationDataDictionary(Message::toApplVerID(beginStringQualifier), 
+        provider.addApplicationDataDictionary(Message::toApplVerID(beginStringQualifier),
             createDataDictionary(sessionID, settings, key));
       }
     }
@@ -271,4 +295,5 @@ void SessionFactory::processFixDataDictionary(const SessionID& sessionID,
   provider.addTransportDataDictionary(sessionID.getBeginString(), pDataDictionary);
   provider.addApplicationDataDictionary(Message::toApplVerID(sessionID.getBeginString()), pDataDictionary);
 }
+
 }

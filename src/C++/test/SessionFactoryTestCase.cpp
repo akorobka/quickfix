@@ -26,6 +26,7 @@
 
 #include <UnitTest++.h>
 #include <SessionFactory.h>
+#include <Session.h>
 #include <Application.h>
 #include <MessageStore.h>
 

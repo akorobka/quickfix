@@ -47,10 +47,16 @@ namespace FIX44
 
   class Message : public FIX::Message
   {
+  protected:
+    Message( const FIX::MsgType::Pack& msgtype )
+    : FIX::Message(
+      FIX::BeginString::Pack("FIX.4.4"), msgtype )
+     {} 
+
   public:
     Message( const FIX::MsgType& msgtype )
     : FIX::Message(
-      FIX::BeginString("FIX.4.4"), msgtype )
+      FIX::BeginString::Pack("FIX.4.4"), msgtype )
      {} 
 
     Message(const FIX::Message& m) : FIX::Message(m) {}

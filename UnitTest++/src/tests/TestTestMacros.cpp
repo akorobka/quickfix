@@ -1,3 +1,6 @@
+#ifdef __SUNPRO_CC
+#include <strings.h>
+#endif
 #include "../UnitTest++.h"
 #include "../TestMacros.h"
 #include "../TestList.h"
@@ -47,9 +50,9 @@ TEST (ExceptionsInFixtureAreReportedAsHappeningInTheFixture)
 		list2.GetHead()->Run();
 	}
 
-    CHECK(strstr(reporter.lastFailedMessage, "xception"));
-    CHECK(strstr(reporter.lastFailedMessage, "fixture"));
-    CHECK(strstr(reporter.lastFailedMessage, "ThrowingThingie"));
+    CHECK(::strstr(reporter.lastFailedMessage, "xception"));
+    CHECK(::strstr(reporter.lastFailedMessage, "fixture"));
+    CHECK(::strstr(reporter.lastFailedMessage, "ThrowingThingie"));
 }
 
 struct DummyFixture
@@ -126,7 +129,7 @@ TEST(FixturesWithThrowingCtorsAreFailures)
 
 	int const failureCount = result.GetFailedTestCount();
 	CHECK_EQUAL(1, failureCount);
-	CHECK(strstr(reporter.lastFailedMessage, "while constructing fixture"));
+	CHECK(::strstr(reporter.lastFailedMessage, "while constructing fixture"));
 }
 
 struct FixtureDtorThrows
@@ -152,7 +155,7 @@ TEST(FixturesWithThrowingDtorsAreFailures)
 
 	int const failureCount = result.GetFailedTestCount();
 	CHECK_EQUAL(1, failureCount);
-	CHECK(strstr(reporter.lastFailedMessage, "while destroying fixture"));
+	CHECK(::strstr(reporter.lastFailedMessage, "while destroying fixture"));
 }
 
 const int FailingLine = 123;
@@ -182,7 +185,7 @@ TEST(CorrectlyReportsFixturesWithCtorsThatAssert)
 	const int failureCount = result.GetFailedTestCount();
 	CHECK_EQUAL(1, failureCount);
 	CHECK_EQUAL(FailingLine, reporter.lastFailedLine);
-	CHECK(strstr(reporter.lastFailedMessage, "assert failure"));
+	CHECK(::strstr(reporter.lastFailedMessage, "assert failure"));
 }
 
 }

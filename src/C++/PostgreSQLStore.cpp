@@ -73,9 +73,9 @@ void PostgreSQLStore::populateCache()
   std::stringstream queryString;
 
   queryString << "SELECT creation_time, incoming_seqnum, outgoing_seqnum FROM sessions WHERE "
-  << "beginstring=" << "'" << m_sessionID.getBeginString().getValue() << "' and "
-  << "sendercompid=" << "'" << m_sessionID.getSenderCompID().getValue() << "' and "
-  << "targetcompid=" << "'" << m_sessionID.getTargetCompID().getValue() << "' and "
+  << "beginstring=" << "'" << m_sessionID.getBeginString() << "' and "
+  << "sendercompid=" << "'" << m_sessionID.getSenderCompID() << "' and "
+  << "targetcompid=" << "'" << m_sessionID.getTargetCompID() << "' and "
   << "session_qualifier=" << "'" << m_sessionID.getSessionQualifier() << "'";
 
   PostgreSQLQuery query( queryString.str() );
@@ -91,13 +91,13 @@ void PostgreSQLStore::populateCache()
     struct tm time;
     std::string sqlTime = query.getValue( 0, 0 );
     strptime( sqlTime.c_str(), "%Y-%m-%d %H:%M:%S", &time );
-    m_cache.setCreationTime (UtcTimeStamp (&time));
+    setCreationTime( m_cache.setCreationTime (UtcTimeStamp (&time)));
     m_cache.setNextTargetMsgSeqNum( atol( query.getValue( 0, 1 ) ) );
     m_cache.setNextSenderMsgSeqNum( atol( query.getValue( 0, 2 ) ) );
   }
   else
   {
-    UtcTimeStamp time = m_cache.getCreationTime();
+    UtcTimeStamp time = setCreationTime( m_cache.getCreationTime() );
     char sqlTime[ 20 ];
     int year, month, day, hour, minute, second, millis;
     time.getYMD (year, month, day);
@@ -107,9 +107,9 @@ void PostgreSQLStore::populateCache()
     std::stringstream queryString2;
     queryString2 << "INSERT INTO sessions (beginstring, sendercompid, targetcompid, session_qualifier,"
     << "creation_time, incoming_seqnum, outgoing_seqnum) VALUES("
-    << "'" << m_sessionID.getBeginString().getValue() << "',"
-    << "'" << m_sessionID.getSenderCompID().getValue() << "',"
-    << "'" << m_sessionID.getTargetCompID().getValue() << "',"
+    << "'" << m_sessionID.getBeginString() << "',"
+    << "'" << m_sessionID.getSenderCompID() << "',"
+    << "'" << m_sessionID.getTargetCompID() << "',"
     << "'" << m_sessionID.getSessionQualifier() << "',"
     << "'" << sqlTime << "',"
     << m_cache.getNextTargetMsgSeqNum() << ","
@@ -169,30 +169,28 @@ void PostgreSQLStoreFactory::destroy( MessageStore* pStore )
 bool PostgreSQLStore::set( int msgSeqNum, const std::string& msg )
 throw ( IOException )
 {
-  char* msgCopy = new char[ (msg.size() * 2) + 1 ];
-  PQescapeString( msgCopy, msg.c_str(), msg.size() );
+  Util::scoped_array<char>::type msgCopy( new char[ 2 * msg.size() + 1 ] );
+  PQescapeString( msgCopy.get(), msg.c_str(), msg.size() );
 
   std::stringstream queryString;
   queryString << "INSERT INTO messages "
   << "(beginstring, sendercompid, targetcompid, session_qualifier, msgseqnum, message) "
   << "VALUES ("
-  << "'" << m_sessionID.getBeginString().getValue() << "',"
-  << "'" << m_sessionID.getSenderCompID().getValue() << "',"
-  << "'" << m_sessionID.getTargetCompID().getValue() << "',"
+  << "'" << m_sessionID.getBeginString() << "',"
+  << "'" << m_sessionID.getSenderCompID() << "',"
+  << "'" << m_sessionID.getTargetCompID() << "',"
   << "'" << m_sessionID.getSessionQualifier() << "',"
   << msgSeqNum << ","
-  << "'" << msgCopy << "')";
-
-  delete [] msgCopy;
+  << "'" << msgCopy.get() << "')";
 
   PostgreSQLQuery query( queryString.str() );
   if( !m_pConnection->execute(query) )
   {
     std::stringstream queryString2;
     queryString2 << "UPDATE messages SET message='" << msg << "' WHERE "
-    << "beginstring=" << "'" << m_sessionID.getBeginString().getValue() << "' and "
-    << "sendercompid=" << "'" << m_sessionID.getSenderCompID().getValue() << "' and "
-    << "targetcompid=" << "'" << m_sessionID.getTargetCompID().getValue() << "' and "
+    << "beginstring=" << "'" << m_sessionID.getBeginString() << "' and "
+    << "sendercompid=" << "'" << m_sessionID.getSenderCompID() << "' and "
+    << "targetcompid=" << "'" << m_sessionID.getTargetCompID() << "' and "
     << "session_qualifier=" << "'" << m_sessionID.getSessionQualifier() << "' and "
     << "msgseqnum=" << msgSeqNum;
     PostgreSQLQuery query2( queryString2.str() );
@@ -210,9 +208,9 @@ throw ( IOException )
   result.clear();
   std::stringstream queryString;
   queryString << "SELECT message FROM messages WHERE "
-  << "beginstring=" << "'" << m_sessionID.getBeginString().getValue() << "' and "
-  << "sendercompid=" << "'" << m_sessionID.getSenderCompID().getValue() << "' and "
-  << "targetcompid=" << "'" << m_sessionID.getTargetCompID().getValue() << "' and "
+  << "beginstring=" << "'" << m_sessionID.getBeginString() << "' and "
+  << "sendercompid=" << "'" << m_sessionID.getSenderCompID() << "' and "
+  << "targetcompid=" << "'" << m_sessionID.getTargetCompID() << "' and "
   << "session_qualifier=" << "'" << m_sessionID.getSessionQualifier() << "' and "
   << "msgseqnum>=" << begin << " and " << "msgseqnum<=" << end << " "
   << "ORDER BY msgseqnum";
@@ -240,9 +238,9 @@ void PostgreSQLStore::setNextSenderMsgSeqNum( int value ) throw ( IOException )
 {
   std::stringstream queryString;
   queryString << "UPDATE sessions SET outgoing_seqnum=" << value << " WHERE "
-  << "beginstring=" << "'" << m_sessionID.getBeginString().getValue() << "' and "
-  << "sendercompid=" << "'" << m_sessionID.getSenderCompID().getValue() << "' and "
-  << "targetcompid=" << "'" << m_sessionID.getTargetCompID().getValue() << "' and "
+  << "beginstring=" << "'" << m_sessionID.getBeginString() << "' and "
+  << "sendercompid=" << "'" << m_sessionID.getSenderCompID() << "' and "
+  << "targetcompid=" << "'" << m_sessionID.getTargetCompID() << "' and "
   << "session_qualifier=" << "'" << m_sessionID.getSessionQualifier() << "'";
 
   PostgreSQLQuery query( queryString.str() );
@@ -256,9 +254,9 @@ void PostgreSQLStore::setNextTargetMsgSeqNum( int value ) throw ( IOException )
 {
   std::stringstream queryString;
   queryString << "UPDATE sessions SET incoming_seqnum=" << value << " WHERE "
-  << "beginstring=" << "'" << m_sessionID.getBeginString().getValue() << "' and "
-  << "sendercompid=" << "'" << m_sessionID.getSenderCompID().getValue() << "' and "
-  << "targetcompid=" << "'" << m_sessionID.getTargetCompID().getValue() << "' and "
+  << "beginstring=" << "'" << m_sessionID.getBeginString() << "' and "
+  << "sendercompid=" << "'" << m_sessionID.getSenderCompID() << "' and "
+  << "targetcompid=" << "'" << m_sessionID.getTargetCompID() << "' and "
   << "session_qualifier=" << "'" << m_sessionID.getSessionQualifier() << "'";
 
   PostgreSQLQuery query( queryString.str() );
@@ -280,18 +278,13 @@ void PostgreSQLStore::incrNextTargetMsgSeqNum() throw ( IOException )
   setNextTargetMsgSeqNum( m_cache.getNextTargetMsgSeqNum() );
 }
 
-UtcTimeStamp PostgreSQLStore::getCreationTime() const throw ( IOException )
-{
-  return m_cache.getCreationTime();
-}
-
 void PostgreSQLStore::reset() throw ( IOException )
 {
   std::stringstream queryString;
   queryString << "DELETE FROM messages WHERE "
-  << "beginstring=" << "'" << m_sessionID.getBeginString().getValue() << "' and "
-  << "sendercompid=" << "'" << m_sessionID.getSenderCompID().getValue() << "' and "
-  << "targetcompid=" << "'" << m_sessionID.getTargetCompID().getValue() << "' and "
+  << "beginstring=" << "'" << m_sessionID.getBeginString() << "' and "
+  << "sendercompid=" << "'" << m_sessionID.getSenderCompID() << "' and "
+  << "targetcompid=" << "'" << m_sessionID.getTargetCompID() << "' and "
   << "session_qualifier=" << "'" << m_sessionID.getSessionQualifier() << "'";
 
   PostgreSQLQuery query( queryString.str() );
@@ -299,7 +292,7 @@ void PostgreSQLStore::reset() throw ( IOException )
     query.throwException();
 
   m_cache.reset();
-  UtcTimeStamp time = m_cache.getCreationTime();
+  UtcTimeStamp time = setCreationTime( m_cache.getCreationTime() );
 
   int year, month, day, hour, minute, second, millis;
   time.getYMD( year, month, day );
@@ -313,9 +306,9 @@ void PostgreSQLStore::reset() throw ( IOException )
   queryString2 << "UPDATE sessions SET creation_time='" << sqlTime << "', "
   << "incoming_seqnum=" << m_cache.getNextTargetMsgSeqNum() << ", "
   << "outgoing_seqnum=" << m_cache.getNextSenderMsgSeqNum() << " WHERE "
-  << "beginstring=" << "'" << m_sessionID.getBeginString().getValue() << "' and "
-  << "sendercompid=" << "'" << m_sessionID.getSenderCompID().getValue() << "' and "
-  << "targetcompid=" << "'" << m_sessionID.getTargetCompID().getValue() << "' and "
+  << "beginstring=" << "'" << m_sessionID.getBeginString() << "' and "
+  << "sendercompid=" << "'" << m_sessionID.getSenderCompID() << "' and "
+  << "targetcompid=" << "'" << m_sessionID.getTargetCompID() << "' and "
   << "session_qualifier=" << "'" << m_sessionID.getSessionQualifier() << "'";
 
   PostgreSQLQuery query2( queryString2.str() );

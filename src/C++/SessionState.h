@@ -36,7 +36,11 @@ namespace FIX
 /// Maintains all of state for the Session class.
 class SessionState : public MessageStore, public Log
 {
+#ifdef HAVE_BOOST
+  typedef boost::unordered_map < int, Message > Messages;
+#else
   typedef std::map < int, Message > Messages;
+#endif
 
 public:
   SessionState()
@@ -45,7 +49,8 @@ public:
   m_sentReset( false ), m_receivedReset( false ),
   m_initiate( false ), m_logonTimeout( 10 ), 
   m_logoutTimeout( 2 ), m_testRequest( 0 ),
-  m_pStore( 0 ), m_pLog( 0 ) {}
+  m_heartBtIntValue( -1 ), m_pStore( 0 ),
+  m_pLog( 0 ), m_LogCaps( 0 ) {}
 
   bool enabled() const { return m_enabled; }
   void enabled( bool value ) { m_enabled = value; }
@@ -87,16 +92,38 @@ public:
   { m_resendRange = std::make_pair( begin, end ); }
 
   MessageStore* store() { return m_pStore; }
-  void store( MessageStore* pValue ) { m_pStore = pValue; }
-  Log* log() { return m_pLog ? m_pLog : &m_nullLog; }
-  void log( Log* pValue ) { m_pLog = pValue; }
+  void store( MessageStore* pValue )
+  {
+    m_pStore = pValue;
+    setCreationTime( m_pStore->getCreationTime() );
+  }
+  Log* log() { return m_pLog; }
+  void log( Log* pValue )
+  {
+    m_pLog = pValue;
+    m_LogCaps = (pValue) ? pValue->queryLogCapabilities() : 0;
+  }
+
+  unsigned queryLogCapabilities() const { return m_LogCaps; }
 
   void heartBtInt( const HeartBtInt& value )
-  { m_heartBtInt = value; }
+  {
+    m_heartBtIntValue = value.getValue();
+    m_heartBtInt = value;
+  }
   HeartBtInt& heartBtInt()
-  { return m_heartBtInt; }
+  {
+    m_heartBtIntValue = -1;
+    return m_heartBtInt;
+  }
   const HeartBtInt& heartBtInt() const
   { return m_heartBtInt; }
+  int heartBtIntValue() const
+  {
+    return ( m_heartBtIntValue >= 0)
+           ? m_heartBtIntValue :
+           ( m_heartBtIntValue = m_heartBtInt.getValue() );
+  }
 
   void lastSentTime( const UtcTimeStamp& value )
   { m_lastSentTime = value; }
@@ -119,21 +146,19 @@ public:
     UtcTimeStamp now;
     return now - lastReceivedTime() >= logonTimeout();
   }
-  bool logoutTimedOut() const
+  bool logoutTimedOut( const UtcTimeStamp& now ) const
   {
-    UtcTimeStamp now;
     return sentLogout() && ( ( now - lastSentTime() ) >= logoutTimeout() );
   }
-  bool withinHeartBeat() const
+  bool logoutTimedOut() const { return logoutTimedOut( UtcTimeStamp() ); }
+  bool withinHeartBeat( const UtcTimeStamp& now = UtcTimeStamp() ) const
   {
-    UtcTimeStamp now;
-    return ( ( now - lastSentTime() ) < heartBtInt() ) &&
-           ( ( now - lastReceivedTime() ) < heartBtInt() );
+    return ( ( now - lastSentTime() ) < heartBtIntValue() ) &&
+           ( ( now - lastReceivedTime() ) < heartBtIntValue() );
   }
-  bool timedOut() const
+  bool timedOut( const UtcTimeStamp& now = UtcTimeStamp() ) const
   {
-    UtcTimeStamp now;
-    return ( now - lastReceivedTime() ) >= ( 2.4 * ( double ) heartBtInt() );
+    return ( now - lastReceivedTime() ) >= ( 2.4 * ( double ) heartBtIntValue() );
   }
   bool needHeartbeat() const
   {
@@ -144,7 +169,7 @@ public:
   {
     UtcTimeStamp now;
     return ( now - lastReceivedTime() ) >=
-           ( ( 1.2 * ( ( double ) testRequest() + 1 ) ) * ( double ) heartBtInt() );
+           ( ( 1.2 * ( ( double ) testRequest() + 1 ) ) * ( double ) heartBtIntValue() );
   }
 
   std::string logoutReason() const 
@@ -154,6 +179,25 @@ public:
 
   void queue( int msgSeqNum, const Message& message )
   { Locker l( m_mutex ); m_queue[ msgSeqNum ] = message; }
+  template <typename F> bool dequeue( F& f )
+  {
+    FlexLocker l( m_mutex );
+    if ( !m_queue.empty() )
+    {
+      int msgSeqNum = m_pStore->getNextTargetMsgSeqNum();
+      Messages::iterator i = m_queue.find( msgSeqNum );
+      if ( i != m_queue.end() )
+      {
+        Message msg = i->second;
+        m_queue.erase( i );
+        l.unlock();
+  
+        return f( msgSeqNum, msg );
+      }
+    }
+    return false;
+  }
+
   bool retrieve( int msgSeqNum, Message& message )
   {
     Locker l( m_mutex );
@@ -171,6 +215,8 @@ public:
 
   bool set( int s, const std::string& m ) throw ( IOException )
   { Locker l( m_mutex ); return m_pStore->set( s, m ); }
+  bool set( int s, Sg::sg_buf_ptr m, int n ) throw ( IOException )
+  { Locker l( m_mutex ); return m_pStore->set( s, m, n ); }
   void get( int b, int e, std::vector < std::string > &m ) const
   throw ( IOException )
   { Locker l( m_mutex ); m_pStore->get( b, e, m ); }
@@ -186,25 +232,42 @@ public:
   { Locker l( m_mutex ); m_pStore->incrNextSenderMsgSeqNum(); }
   void incrNextTargetMsgSeqNum() throw ( IOException )
   { Locker l( m_mutex ); m_pStore->incrNextTargetMsgSeqNum(); }
-  UtcTimeStamp getCreationTime() const throw ( IOException )
-  { Locker l( m_mutex ); return m_pStore->getCreationTime(); }
   void reset() throw ( IOException )
-  { Locker l( m_mutex ); m_pStore->reset(); }
+  { Locker l( m_mutex ); m_pStore->reset(); setCreationTime( m_pStore->getCreationTime() ); }
   void refresh() throw ( IOException )
-  { Locker l( m_mutex ); m_pStore->refresh(); }
+  { Locker l( m_mutex ); m_pStore->refresh(); setCreationTime( m_pStore->getCreationTime() ); }
 
-  void clear()
-  { if ( !m_pLog ) return ; Locker l( m_mutex ); m_pLog->clear(); }
-  void backup()
-  { if ( !m_pLog ) return ; Locker l( m_mutex ); m_pLog->backup(); }
-  void onIncoming( const std::string& string )
-  { if ( !m_pLog ) return ; Locker l( m_mutex ); m_pLog->onIncoming( string ); }
-  void onOutgoing( const std::string& string )
-  { if ( !m_pLog ) return ; Locker l( m_mutex ); m_pLog->onOutgoing( string ); }
-  void onEvent( const std::string& string )
-  { if ( !m_pLog ) return ; Locker l( m_mutex ); m_pLog->onEvent( string ); }
+  void clear() {
+    if ( LIKELY(!(m_LogCaps & Log::LC_CLEAR)) ) return ;
+    Locker l( m_mutex ); m_pLog->clear();
+  }
+  void backup() {
+    if ( LIKELY(!(m_LogCaps & Log::LC_BACKUP)) ) return ;
+    Locker l( m_mutex ); m_pLog->backup();
+  }
+  void onIncoming( const std::string& string ) {
+    if ( LIKELY(!(m_LogCaps & Log::LC_INCOMING)) ) return ;
+    Locker l( m_mutex ); m_pLog->onIncoming( string );
+  }
+  void onIncoming( Sg::sg_buf_ptr b, int n ) {
+    if ( LIKELY(!(m_LogCaps & Log::LC_INCOMING)) ) return ;
+    Locker l( m_mutex ); m_pLog->onIncoming( b, n );
+  }
+  void onOutgoing( const std::string& string ) {
+    if ( LIKELY(!(m_LogCaps & Log::LC_OUTGOING)) ) return ;
+    Locker l( m_mutex ); m_pLog->onOutgoing( string );
+  }
+  void onOutgoing( Sg::sg_buf_ptr b, int n ) {
+    if ( LIKELY(!(m_LogCaps & Log::LC_OUTGOING)) ) return ;
+    Locker l( m_mutex ); m_pLog->onOutgoing( b, n );
+  }
+  void onEvent( const std::string& string ) {
+    if ( LIKELY(!(m_LogCaps & Log::LC_EVENT)) ) return ;
+    Locker l( m_mutex ); m_pLog->onEvent( string );
+  }
 
 private:
+
   bool m_enabled;
   bool m_receivedLogon;
   bool m_sentLogout;
@@ -215,15 +278,16 @@ private:
   int m_logonTimeout;
   int m_logoutTimeout;
   int m_testRequest;
-  ResendRange m_resendRange;
+  mutable int m_heartBtIntValue;
   HeartBtInt m_heartBtInt;
+  ResendRange m_resendRange;
   UtcTimeStamp m_lastSentTime;
   UtcTimeStamp m_lastReceivedTime;
   std::string m_logoutReason;
   Messages m_queue;
   MessageStore* m_pStore;
   Log* m_pLog;
-  NullLog m_nullLog;
+  unsigned m_LogCaps;
   mutable Mutex m_mutex;
 };
 }

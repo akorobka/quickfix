@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS ?= -g -Wall -W -Winline -Wno-unused-private-field -Wno-overloaded-virtual -ansi 
+CXXFLAGS ?= -g -O0 -Wall -W -Winline -Wno-unused-private-field -Wno-overloaded-virtual -ansi 
 LDFLAGS ?= 
 SED = sed
 MV = mv
@@ -88,6 +88,8 @@ clean:
 	@echo $<
 	@$(call make-depend,$<,$@,$(subst .o,.d,$@))
 	@$(CXX) $(CXXFLAGS) -c $< -o $(patsubst %.cpp, %.o, $<)
+
+distclean:
 
 install:
 

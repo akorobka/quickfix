@@ -59,15 +59,19 @@ public:
   bool read();
 
 private:
-  bool readMessage( std::string& msg ) throw( SocketRecvFailed );
+  bool readMessage( Sg::sg_buf_t& msg );
   void processStream();
+  bool setSession( Sg::sg_buf_t& msg );
+
   bool send( const std::string& );
-  bool setSession( const std::string& msg );
+  bool send( Sg::sg_buf_ptr bufs, int n );
 
   int m_socket;
-  char m_buffer[BUFSIZ];
+  char m_buffer[4 * BUFSIZ];
 
+  UtcTimeStamp m_ts;
   std::string m_address;
+  std::string m_msg;
   int m_port;
 
   Log* m_pLog;
@@ -75,7 +79,6 @@ private:
   Sessions m_sessions;
   Session* m_pSession;
   bool m_disconnect;
-  fd_set m_fds;
 };
 }
 

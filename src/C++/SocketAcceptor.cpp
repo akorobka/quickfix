@@ -209,7 +209,7 @@ void SocketAcceptor::onDisconnect( SocketServer&, int s )
   m_connections.erase( s );
 }
 
-void SocketAcceptor::onError( SocketServer& ) 
+void SocketAcceptor::onError( SocketServer& )
 {
 }
 

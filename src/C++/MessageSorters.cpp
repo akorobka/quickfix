@@ -25,81 +25,70 @@
 
 #include "MessageSorters.h"
 
-#include <string.h>
-
 namespace FIX
 {
 message_order::message_order( int first, ... )
-: m_mode( group ), m_delim( 0 ), m_largest( 0 )
+: m_mode( group ), m_largest( 0 )
 {
   int field = first;
   int size = 0;
-  m_largest = m_delim = first;
+  m_largest = first;
 
   va_list arguments;
   va_start( arguments, first );
   while( field != 0 )
   {
-      m_largest = m_largest > field ? m_largest : field;
+    m_largest = m_largest > field ? m_largest : field;
       
-      size++;
-      field = va_arg( arguments, int );
+    size++;
+    field = va_arg( arguments, int );
   }
 
-  if(size)
+  if ( size )
   {
-      m_groupOrder = shared_array<int>::create(m_largest + 1);
+    m_groupOrder = group_order_array::create(m_largest);
+    int *p = m_groupOrder;
 
-      va_start( arguments, first );
-      field = first;
-      int i = 0;
-      while( field != 0 )
-      {
-          m_groupOrder[ field ] = ++i;
-          field = va_arg( arguments, int );
-      }
+    va_start( arguments, first );
+    field = first;
+    int i = 0;
+    while( field != 0 )
+    {
+      p[ field ] = i++ - size; // < 0 for ordered fields
+      field = va_arg( arguments, int );
+    }
   }
   else
   {
-      m_largest = 0;
-      m_delim = 0;
+    m_largest = 0;
   }
 
   va_end( arguments );
 }
 
 message_order::message_order( const int order[] )
-: m_mode( group ), m_delim( 0 ), m_largest( 0 )
+: m_mode( group ), m_largest( 0 )
 {
   int size = 0;
   while( order[size] != 0 ) { ++size; }
-  setOrder(size, order);
-}
-
-message_order& message_order::operator=( const message_order& rhs )
-{
-  m_mode = rhs.m_mode;
-  m_delim = rhs.m_delim;
-  m_largest = rhs.m_largest;
-  m_groupOrder = rhs.m_groupOrder;
-
-  return *this;
-}
-
-void message_order::setOrder( int size, const int order[] )
-{
-  if(size < 1) return;
-  m_largest = m_delim = order[0];
-
-  // collect all fields and find the largest field number
-  for (int i = 1; i < size; ++i )
+  if ( size )
   {
+    m_largest = order[0];
+
+    // collect all fields and find the largest field number
+    for (int i = 1; i < size; ++i )
+    {
       int field = order[i];
       m_largest = m_largest > field ? m_largest : field;
-  }
+    }
 
-  m_groupOrder = shared_array<int>::create(m_largest + 1);
-  for (int i = 0; i < size; ++i )
-      m_groupOrder[ order[ i ] ] = i + 1;
+    m_groupOrder = group_order_array::create(m_largest);
+    int* p = m_groupOrder;
+
+    for (int i = 0; i < size; ++i )
+      p[ order[ i ] ] = i - size; // < 0 for ordered fields
+  }
 }
-}
+
+} // namespace FIX
+

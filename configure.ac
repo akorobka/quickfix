@@ -5,9 +5,11 @@ AC_PREREQ([2.59])
 
 AC_INIT([QuickFIX], [1.14.3], [ask@quickfixengine.org])
 AC_CONFIG_MACRO_DIR([m4])
+m4_include([m4/ax_sso.m4])
 m4_include([m4/ax_lib_mysql.m4])
 m4_include([m4/ax_lib_postgresql.m4])
 m4_include([m4/ax_lib_boost.m4])
+m4_include([m4/ax_lib_tbb.m4])
 m4_include([m4/ax_lib_stlport.m4])
 m4_include([m4/ax_allocator.m4])
 m4_include([m4/ax_python.m4])
@@ -27,58 +29,20 @@ AC_LIBTOOL_WIN32_DLL
 AM_PROG_LIBTOOL
 AM_PROG_LEX
 
+AX_ORDERING()
+AX_FIELDMAP()
+AX_SSO()
 AX_LIB_MYSQL()
 AX_LIB_POSTGRESQL()
 AX_LIB_BOOST()
+AX_LIB_TBB()
 AX_LIB_STLPORT()
-AX_ALLOCATOR()
 AX_PYTHON()
 AX_RUBY()
 AX_JAVA()
 
-########################################
-# TBB 
-########################################
-has_tbb=false
-AC_ARG_WITH(tbb,
-    [  --with-tbb=<path>       prefix of Intel Thread Building Blocks (TBB) installation. e.g. /opt/intel/tbb/3.0], 
-    [if test $withval == "no"
-     then
-       has_tbb=false
-     else
-       has_tbb=true
-     fi],
-    has_tbb=false
-)
-TBB_PREFIX=$with_tbb
-AC_SUBST(TBB_PREFIX)
-
-has_tbb_arch=false
-AC_ARG_WITH(tbb-arch,
-    [  --with-tbb-arch=<arch>  TBB arch subdir, e.g. intel64/cc4.1.0_libc2.4_kernel2.6.16.21 ], 
-    [if test $withval == "no"
-     then
-       has_tbb_arch=false
-     else
-       has_tbb_arch=true
-     fi],
-    has_tbb_arch=false
-)
-TBB_ARCH=$with_tbb_arch
-AC_SUBST(TBB_ARCH)
-
-if test $has_tbb = true
-then
-    TBB_CFLAGS="-I${TBB_PREFIX}"
-    AC_SUBST(TBB_CFLAGS)
-    TBB_LIBS="-L${TBB_PREFIX}/${TBB_ARCH} -ltbbmalloc"
-    AC_SUBST(TBB_LIBS)
-    AC_DEFINE(HAVE_TBB, 1, Define if you have Intel TBB framework)
-fi
-########################################
-
 # libs
-LIBS="$STLPORT_LIBS $XML_LIBS $MYSQL_LIBS $POSTGRESQL_LDFLAGS $TBB_LIBS $LIBS"
+LIBS="$STLPORT_LIBS $XML_LIBS $MYSQL_LIBS $POSTGRESQL_LDFLAGS $TBB_LIBS $BOOST_LIBS $LIBS"
 # gcc flags
 if test `uname` == SunOS; then
    	SHAREDFLAGS="$TBB_CFLAGS $BOOST_CFLAGS $STLPORT_CFLAGS $MYSQL_CFLAGS $POSTGRESQL_CFLAGS $XML_CPPFLAGS $XML_CFLAGS $JAVA_CFLAGS $PYTHON_CFLAGS $RUBY_CFLAGS"
@@ -241,6 +205,17 @@ AC_TRY_COMPILE(
 	 The system has gethostbyname_r which takes a result as a pass-in param),
 	 AC_MSG_RESULT(no))
 
+# check for SSO
+AX_SSO_CHECK()
+
+# check for tbb
+AX_LIB_TBB_CHECK()
+
+# check for Boost
+AX_LIB_BOOST_CHECK()
+
+AX_ALLOCATOR()
+
 AC_DEFINE(_REENTRANT, 1, enable reentrant system calls)
 
 # Checks for library functions.
@@ -249,6 +224,9 @@ AC_LANG_RESTORE
 AC_CHECK_LIB(iberty, cplus_demangle,    
   AC_DEFINE(HAVE_CPLUS_DEMANGLE,1,whether or not we have to demangle names)
   LIBS="$LIBS -liberty")
+
+AC_CHECK_LIB(rt, clock_gettime, RT_LIBS="-lrt")
+AC_SUBST(RT_LIBS)
 
 # Checks for runtime behavior
 AC_MSG_CHECKING(if select modifies timeval parameter)
@@ -290,6 +268,8 @@ AC_CONFIG_FILES([
     test/definitions/server/Makefile
     test/definitions/server/future/Makefile
     examples/Makefile
+    examples/codec/Makefile
+    examples/latency/Makefile
     examples/executor/Makefile
     examples/executor/C++/Makefile
     examples/ordermatch/Makefile

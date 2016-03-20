@@ -8,8 +8,9 @@ namespace FIX50SP1
 
   class NewOrderSingle : public Message
   {
+    static FIX::MsgType::Pack PackedType() { return FIX::MsgType::Pack("D"); }
   public:
-    NewOrderSingle() : Message(MsgType()) {}
+    NewOrderSingle() : Message(PackedType()) {}
     NewOrderSingle(const FIX::Message& m) : Message(m) {}
     NewOrderSingle(const Message& m) : Message(m) {}
     NewOrderSingle(const NewOrderSingle& m) : Message(m) {}
@@ -20,12 +21,25 @@ namespace FIX50SP1
       const FIX::Side& aSide,
       const FIX::TransactTime& aTransactTime,
       const FIX::OrdType& aOrdType )
-    : Message(MsgType())
+    : Message(PackedType())
     {
-      set(aClOrdID);
-      set(aSide);
-      set(aTransactTime);
-      set(aOrdType);
+      Sequence::push_back_to(*this, aClOrdID);
+      Sequence::push_back_to(*this, aOrdType);
+      Sequence::push_back_to(*this, aSide);
+      Sequence::push_back_to(*this, aTransactTime);
+    }
+
+    NewOrderSingle(
+      const FIX::ClOrdID::Pack& aClOrdID,
+      const FIX::Side::Pack& aSide,
+      const FIX::TransactTime::Pack& aTransactTime,
+      const FIX::OrdType::Pack& aOrdType )
+    : Message(PackedType())
+    {
+      Sequence::push_back_to(*this, aClOrdID);
+      Sequence::push_back_to(*this, aOrdType);
+      Sequence::push_back_to(*this, aSide);
+      Sequence::push_back_to(*this, aTransactTime);
     }
 
     FIELD_SET(*this, FIX::ClOrdID);

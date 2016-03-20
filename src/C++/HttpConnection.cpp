@@ -46,7 +46,7 @@ bool HttpConnection::send( const std::string& msg )
 }
 
 void HttpConnection::disconnect( int error )
-{ 
+{
   if( error > 0 )
     send( HttpMessage::createResponse(error) );
 
@@ -212,9 +212,10 @@ void HttpConnection::processRoot
 
     { TR tr(b); tr.text();
       { TD td(b); td.text();
-        std::string href = "/session?BeginString=" + i->getBeginString().getValue() +
-                            "&SenderCompID=" + i->getSenderCompID().getValue() +
-                            "&TargetCompID=" + i->getTargetCompID().getValue();
+        std::string href = "/session?BeginString=" +
+                           i->getBeginString().dupString() + "&SenderCompID=" +
+                           i->getSenderCompID().dupString() + "&TargetCompID=" +
+                           i->getTargetCompID().dupString();
         if( i->getSessionQualifier().size() )
           href += "&SessionQualifier=" + i->getSessionQualifier();
 

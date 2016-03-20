@@ -103,6 +103,9 @@ struct InvalidTagNumber : public Exception
   InvalidTagNumber( int f = 0, const std::string& what = "" )
     : Exception( "Invalid tag number", what ),
                  field( f ) {}
+  InvalidTagNumber( const char* tag, std::size_t num )
+    : Exception( "Invalid tag number ", std::string(tag, num) ),
+                 field( ::strtol(tag, NULL, 10) ) {}
   int field;
 };
 

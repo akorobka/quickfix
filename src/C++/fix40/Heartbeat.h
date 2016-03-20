@@ -9,7 +9,7 @@ namespace FIX40
   class Heartbeat : public Message
   {
   public:
-    Heartbeat() : Message(MsgType()) {}
+    Heartbeat() : Message(FIX::MsgType::Pack("0")) {}
     Heartbeat(const FIX::Message& m) : Message(m) {}
     Heartbeat(const Message& m) : Message(m) {}
     Heartbeat(const Heartbeat& m) : Message(m) {}

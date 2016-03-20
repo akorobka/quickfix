@@ -68,7 +68,7 @@ private:
   void disconnect( int error = 0 );
 
   int m_socket;
-  char m_buffer[BUFSIZ];
+  char m_buffer[4 * BUFSIZ];
 
   HttpParser m_parser;
   fd_set m_fds;

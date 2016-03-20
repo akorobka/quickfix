@@ -80,6 +80,7 @@ public:
     {}
 
   bool send( const std::string& ) { return true; }
+  bool send( Sg::sg_buf_ptr, int ) { return true; }
 
   void toAdmin( FIX::Message& message, const SessionID& )
   {
@@ -1365,7 +1366,7 @@ struct initiatorCreatedBeforeStartTimeFixture : public TestCallback
       delete object;
   }
 
-  bool send( const std::string& s)
+  bool verify( const std::string& s)
   {
     std::string::size_type p = s.find( "\00135=A\001", 0 );
     if( p != std::string::npos )
@@ -1373,6 +1374,16 @@ struct initiatorCreatedBeforeStartTimeFixture : public TestCallback
     
     actuallySent++;
     return true;
+  }
+
+  bool send( const std::string& s)
+  {
+    return verify( s );
+  }
+
+  bool send( Sg::sg_buf_ptr bufs, int n )
+  {
+    return verify( Sg::toString( bufs, n ) );
   }
 };
 

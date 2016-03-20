@@ -45,10 +45,10 @@ public:
   DataDictionaryProvider() {}
   DataDictionaryProvider( const DataDictionaryProvider& copy );
 
-  const DataDictionary& getSessionDataDictionary(const BeginString& beginString) const
+  const DataDictionary& getSessionDataDictionary(const BeginString& beginString)
   throw( DataDictionaryNotFound );
 
-  const DataDictionary& getApplicationDataDictionary(const ApplVerID& applVerID) const
+  const DataDictionary& getApplicationDataDictionary(const ApplVerID& applVerID)
   throw( DataDictionaryNotFound );
 
   void addTransportDataDictionary(const BeginString& beginString, ptr::shared_ptr<DataDictionary>);
@@ -60,8 +60,14 @@ public:
   { addApplicationDataDictionary(applVerID, ptr::shared_ptr<DataDictionary>( new DataDictionary(path) )); }
 
 private:
-  std::map<std::string, ptr::shared_ptr<DataDictionary> > m_transportDictionaries;
-  std::map<std::string, ptr::shared_ptr<DataDictionary> > m_applicationDictionaries;
+#ifdef HAVE_BOOST
+  typedef boost::unordered_map<String::value_type, ptr::shared_ptr<DataDictionary>, ItemHash, String::equal_to> dictionary_map_t;
+#else
+  typedef std::map<String::value_type, ptr::shared_ptr<DataDictionary>> dictionary_map_t;
+#endif
+
+  dictionary_map_t m_transportDictionaries;
+  dictionary_map_t m_applicationDictionaries;
   DataDictionary emptyDataDictionary;
 };
 }

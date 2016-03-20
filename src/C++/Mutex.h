@@ -26,6 +26,14 @@
 
 namespace FIX
 {
+#ifdef HAVE_BOOST
+
+typedef boost::recursive_mutex	  Mutex;
+typedef boost::unique_lock<Mutex> Locker;
+typedef boost::unique_lock<Mutex> FlexLocker;
+
+#else
+
 /// Portable implementation of a mutex.
 class Mutex
 {
@@ -67,6 +75,21 @@ public:
 #endif
   }
 
+  bool trylock()
+  {
+#ifdef _MSC_VER
+    return TryEnterCriticalSection( &m_mutex ) != 0;
+#else
+    if ( m_count && m_threadID == pthread_self() )
+    { ++m_count; return true; }
+    if (pthread_mutex_trylock( &m_mutex ))
+        return false;
+    ++m_count;
+    m_threadID = pthread_self();
+    return true;
+#endif
+  }
+
   void unlock()
   {
 #ifdef _MSC_VER
@@ -101,6 +124,10 @@ public:
     m_mutex.lock();
   }
 
+  bool owns_lock() const {
+    return true;
+  }
+
   ~Locker()
   {
     m_mutex.unlock();
@@ -109,23 +136,83 @@ private:
   Mutex& m_mutex;
 };
 
-/// Does the opposite of the Locker to ensure mutex ends up in a locked state.
-class ReverseLocker
+/// Locks/Unlocks a mutex using RAII, can be unlocked.
+class FlexLocker
 {
 public:
-  ReverseLocker( Mutex& mutex )
-  : m_mutex( mutex )
+  FlexLocker( Mutex& mutex )
+  : m_mutex( &mutex )
   {
-    m_mutex.unlock();
+    m_mutex->lock();
   }
 
-  ~ReverseLocker()
+  bool owns_lock() const {
+    return m_mutex != NULL;
+  }
+
+  void unlock() {
+    m_mutex->unlock();
+    m_mutex = NULL;
+  }
+
+  ~FlexLocker()
   {
-    m_mutex.lock();
+    if (m_mutex) m_mutex->unlock();
   }
 private:
-  Mutex& m_mutex;
+  Mutex* m_mutex;
 };
+
+#endif // HAVE_BOOST
+
+#ifdef HAVE_TBB
+
+typedef tbb::spin_mutex Spinlock;
+typedef tbb::spin_mutex::scoped_lock SpinLocker;
+
+#else
+
+#ifdef _MSC_VER
+
+typedef Mutex Spinlock;
+typedef Locker SpinLocker;
+
+#else
+
+class Spinlock {
+
+public:
+  Spinlock()
+  { pthread_spin_init(&m_spinlock, false); }
+
+  ~Spinlock()
+  { pthread_spin_destroy(&m_spinlock); }
+
+  void lock()
+  { pthread_spin_lock(&m_spinlock); }
+
+  void unlock()
+  { pthread_spin_unlock(&m_spinlock); }
+
+private:
+  pthread_spinlock_t m_spinlock;
+};
+
+class SpinLocker
+{
+public:
+  SpinLocker(Spinlock& s) : m_spinlock(s)
+  { m_spinlock.lock(); }
+
+  ~SpinLocker()
+  { m_spinlock.unlock(); }
+
+private:
+  Spinlock& m_spinlock;
+};
+#endif // _MSC_VER
+#endif // HAVE_TBB
+
 }
 
 #endif

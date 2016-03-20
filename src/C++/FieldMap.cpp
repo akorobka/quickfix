@@ -26,61 +26,38 @@
 #include "FieldMap.h"
 #include <algorithm>
 #include <iterator>
-#include <deque>
 
 namespace FIX
 {
 FieldMap::~FieldMap()
 {
-  clear();
+  f_clear();
+  g_clear();
 }
 
 FieldMap& FieldMap::operator=( const FieldMap& rhs )
 {
-  clear();
-
-  m_fields = rhs.m_fields;
-
-  Groups::const_iterator i;
-  for ( i = rhs.m_groups.begin(); i != rhs.m_groups.end(); ++i )
-  {
-    std::vector < FieldMap* > ::const_iterator j;
-    for ( j = i->second.begin(); j != i->second.end(); ++j )
-    {
-        FieldMap * pGroup = new FieldMap( **j );
-        m_groups[ i->first ].push_back( pGroup );
-    }
-  }
-
+  f_clone( rhs );
+  g_clear();
+  g_copy( rhs );
   return *this;
 }
 
-void FieldMap::addGroup( int field, const FieldMap& group, bool setCount )
+FieldMap& FieldMap::addGroup( int field, const FieldMap& group, bool setCount )
 {
   FieldMap * pGroup = new FieldMap( group );
-
   addGroupPtr( field, pGroup, setCount );
+  return *pGroup;
 }
 
-void FieldMap::addGroupPtr( int field, FieldMap * group, bool setCount )
-{
-    if( group == 0 )
-        return;
-
-    std::vector< FieldMap* >& vec = m_groups[ field ];
-    vec.push_back( group );
-
-    if( setCount )
-        setField( IntField( field, (int)vec.size() ) );
-}
-
-void FieldMap::replaceGroup( int num, int field, const FieldMap& group )
+bool FieldMap::replaceGroup( int num, int field, const FieldMap& group )
 {
   Groups::const_iterator i = m_groups.find( field );
-  if ( i == m_groups.end() ) return;
-  if ( num <= 0 ) return;
-  if ( i->second.size() < ( unsigned ) num ) return;
+  if ( i == m_groups.end() ) return false;
+  if ( num <= 0 ) return false;
+  if ( i->second.size() < ( unsigned ) num ) return false;
   *( *( i->second.begin() + ( num - 1 ) ) ) = group;
+  return true;
 }
 
 void FieldMap::removeGroup( int num, int field )
@@ -88,12 +65,12 @@ void FieldMap::removeGroup( int num, int field )
   Groups::iterator i = m_groups.find( field );
   if ( i == m_groups.end() ) return;
   if ( num <= 0 ) return;
-  std::vector< FieldMap* >& vector = i->second;
+  GroupItem& vector = i->second;
   if ( vector.size() < ( unsigned ) num ) return;
 
-  std::vector< FieldMap* >::iterator iter = vector.begin();
+  GroupItem::iterator iter = vector.begin();
   std::advance( iter, ( num - 1 ) );
-
+ 
   delete (*iter);
   vector.erase( iter );
 
@@ -112,13 +89,6 @@ void FieldMap::removeGroup( int num, int field )
 void FieldMap::removeGroup( int field )
 {
   removeGroup( (int)groupCount(field), field );
-}
-
-void FieldMap::removeField( int field )
-{
-  Fields::iterator i = m_fields.find( field );
-  if ( i != m_fields.end() )
-    m_fields.erase( i );
 }
 
 bool FieldMap::hasGroup( int num, int field ) const
@@ -140,25 +110,6 @@ size_t FieldMap::groupCount( int field ) const
   return i->second.size();
 }
 
-void FieldMap::clear()
-{
-  m_fields.clear();
-
-  Groups::iterator i;
-  for ( i = m_groups.begin(); i != m_groups.end(); ++i )
-  {
-    std::vector < FieldMap* > ::iterator j;
-    for ( j = i->second.begin(); j != i->second.end(); ++j )
-      delete *j;
-  }
-  m_groups.clear();
-}
-
-bool FieldMap::isEmpty()
-{
-  return m_fields.size() == 0;
-}
-
 size_t FieldMap::totalFields() const
 {
   size_t result = m_fields.size();
@@ -166,29 +117,26 @@ size_t FieldMap::totalFields() const
   Groups::const_iterator i;
   for ( i = m_groups.begin(); i != m_groups.end(); ++i )
   {
-    std::vector < FieldMap* > ::const_iterator j;
-    for ( j = i->second.begin(); j != i->second.end(); ++j )
+    GroupItem::const_iterator j, jend = i->second.end();
+    for ( j = i->second.begin(); j != jend; ++j )
       result += ( *j ) ->totalFields();
   }
   return result;
 }
 
-std::string& FieldMap::calculateString( std::string& result ) const
-{  
-  Fields::const_iterator i;
-  for ( i = m_fields.begin(); i != m_fields.end(); ++i )
-  {
-    result += i->second.getFixString();
+std::string& FieldMap::calculateString( std::string& result, bool clear ) const
+{
 
-    // add groups if they exist
-    if( !m_groups.size() ) continue;
-    Groups::const_iterator j = m_groups.find( i->first );
-    if ( j == m_groups.end() ) continue;
-    std::vector < FieldMap* > ::const_iterator k;
-    for ( k = j->second.begin(); k != j->second.end(); ++k )
-      ( *k ) ->calculateString( result );
-  }
-  return result;
+#if defined(_MSC_VER) && _MSC_VER < 1300
+  if( clear ) result = "";
+#else
+  if( clear ) result.clear();
+#endif
+
+  if( result.empty() )
+    result.reserve( totalFields() * 32 );
+
+  return serializeTo( result );
 }
 
 int FieldMap::calculateLength( int beginStringField,
@@ -196,43 +144,54 @@ int FieldMap::calculateLength( int beginStringField,
                                int checkSumField ) const
 {
   int result = 0;
-  Fields::const_iterator i;
-  for ( i = m_fields.begin(); i != m_fields.end(); ++i )
+  Fields::const_iterator i, fe = f_end();
+  for ( i = f_begin(); i != fe; ++i )
   {
-    if ( i->first != beginStringField
-         && i->first != bodyLengthField
-         && i->first != checkSumField )
+    int tag = i->first;
+    if ( tag != beginStringField
+         && tag != bodyLengthField
+         && tag != checkSumField )
     { result += i->second.getLength(); }
   }
 
-  Groups::const_iterator j;
-  for ( j = m_groups.begin(); j != m_groups.end(); ++j )
+  Groups::const_iterator j, ge = m_groups.end();
+  for ( j = m_groups.begin(); j != ge; ++j )
   {
-    std::vector < FieldMap* > ::const_iterator k;
-    for ( k = j->second.begin(); k != j->second.end(); ++k )
+    GroupItem::const_iterator k, ke = j->second.end();
+    for ( k = j->second.begin(); k != ke; ++k )
       result += ( *k ) ->calculateLength();
   }
   return result;
 }
 
-int FieldMap::calculateTotal( int checkSumField ) const
+int HEAVYUSE FieldMap::calculateTotal( int checkSumField ) const
 {
   int result = 0;
-  Fields::const_iterator i;
-  for ( i = m_fields.begin(); i != m_fields.end(); ++i )
+  Fields::const_iterator i, fe = f_end();
+  for ( i = f_begin(); i != fe; ++i )
   {
     if ( i->first != checkSumField )
       result += i->second.getTotal();
   }
 
-  Groups::const_iterator j;
-  for ( j = m_groups.begin(); j != m_groups.end(); ++j )
+  Groups::const_iterator j, ge = m_groups.end();
+  for ( j = m_groups.begin(); j != ge; ++j )
   {
-    std::vector < FieldMap* > ::const_iterator k;
-    for ( k = j->second.begin(); k != j->second.end(); ++k )
+    GroupItem::const_iterator k, ke = j->second.end();
+    for ( k = j->second.begin(); k != ke; ++k ) {
       result += ( *k ) ->calculateTotal();
+    }
   }
   return result;
+}
+
+void FieldMap::addGroupPtr( int field, FieldMap * group, bool setCount )
+{
+  GroupItem& vec = m_groups[ field ];
+  vec.push_back( group );
+
+  if( setCount )
+      setField( IntField::Pack( field, vec.size() ) );
 }
 
 }

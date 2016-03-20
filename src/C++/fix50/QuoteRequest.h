@@ -8,8 +8,9 @@ namespace FIX50
 
   class QuoteRequest : public Message
   {
+    static FIX::MsgType::Pack PackedType() { return FIX::MsgType::Pack("R"); }
   public:
-    QuoteRequest() : Message(MsgType()) {}
+    QuoteRequest() : Message(PackedType()) {}
     QuoteRequest(const FIX::Message& m) : Message(m) {}
     QuoteRequest(const Message& m) : Message(m) {}
     QuoteRequest(const QuoteRequest& m) : Message(m) {}
@@ -17,9 +18,16 @@ namespace FIX50
 
     QuoteRequest(
       const FIX::QuoteReqID& aQuoteReqID )
-    : Message(MsgType())
+    : Message(PackedType())
     {
-      set(aQuoteReqID);
+      Sequence::push_back_to(*this, aQuoteReqID);
+    }
+
+    QuoteRequest(
+      const FIX::QuoteReqID::Pack& aQuoteReqID )
+    : Message(PackedType())
+    {
+      Sequence::push_back_to(*this, aQuoteReqID);
     }
 
     FIELD_SET(*this, FIX::QuoteReqID);

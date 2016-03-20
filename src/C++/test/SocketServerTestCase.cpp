@@ -60,7 +60,7 @@ public:
   int connect, write, data, disconnect;
   int connectSocket, writeSocket;
   int dataSocket, disconnectSocket;
-  char buf[ 1 ]; size_t bufLen;
+  char buf[ 1 ]; std::size_t bufLen;
 };
 
 SUITE(SocketServerTests)

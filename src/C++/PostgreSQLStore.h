@@ -122,8 +122,6 @@ public:
   void incrNextSenderMsgSeqNum() throw ( IOException );
   void incrNextTargetMsgSeqNum() throw ( IOException );
 
-  UtcTimeStamp getCreationTime() const throw ( IOException );
-
   void reset() throw ( IOException );
   void refresh() throw ( IOException );
 

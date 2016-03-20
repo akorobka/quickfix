@@ -69,6 +69,37 @@ bool SocketConnection::send( const std::string& msg )
   return true;
 }
 
+bool SocketConnection::send( Sg::sg_buf_ptr bufs, int n )
+{
+  {
+    Locker l( m_mutex );
+
+    if( !m_sendQueue.size() )
+    {
+      struct timeval timeout = { 0, 0 };
+      fd_set writeset = m_fds;
+      if( select( 1 + m_socket, 0, &writeset, 0, &timeout ) > 0 )
+      {
+        std::size_t sent = Sg::send(m_socket, bufs, n);
+        for (int i = 0; i < n; i++ )
+        {
+          std::size_t l = IOV_LEN(bufs[i]);
+          if( l > sent )
+          {
+            std::string s( (const char*)IOV_BUF(bufs[i]) + sent, l - sent);
+            while( ++i < n )
+              String::append( s, bufs[i] );
+            return send( s );
+          }
+          sent -= l;
+        }
+        return true;
+      }
+    }
+  } 
+  return send( Sg::toString( bufs, n ) );
+}
+
 bool SocketConnection::processQueue()
 {
   Locker l( m_mutex );
@@ -83,12 +114,14 @@ bool SocketConnection::processQueue()
   const std::string& msg = m_sendQueue.front();
 
   size_t result = socket_send
-    ( m_socket, msg.c_str() + m_sendLength, msg.length() - m_sendLength );
+    ( m_socket, String::c_str(msg) + m_sendLength, String::length(msg) - m_sendLength );
 
   if( result > 0 )
+  {
     m_sendLength += result;
+  }
 
-  if( m_sendLength == msg.length() )
+  if( m_sendLength == String::length(msg) )
   {
     m_sendLength = 0;
     m_sendQueue.pop_front();
@@ -122,39 +155,29 @@ bool SocketConnection::read( SocketConnector& s )
 
 bool SocketConnection::read( SocketAcceptor& a, SocketServer& s )
 {
-  std::string msg;
   try
   {
+    readFromSocket();
+
     if ( !m_pSession )
     {
-      struct timeval timeout = { 1, 0 };
-      fd_set readset = m_fds;
+      Sg::sg_buf_t buf;
+      if ( !readMessage( buf ) ) return false;
 
-      while( !readMessage( msg ) )
-      {
-        int result = select( 1 + m_socket, &readset, 0, 0, &timeout );
-        if( result > 0 )
-          readFromSocket();
-        else if( result == 0 )
-          return false;
-        else if( result < 0 )
-          return false;
-      }
-
-      m_pSession = Session::lookupSession( msg, true );
+      m_pSession = Session::lookupSession( buf, true );
       if( !isValidSession() )
       {
         m_pSession = 0;
         if( a.getLog() )
         {
-          a.getLog()->onEvent( "Session not found for incoming message: " + msg );
-          a.getLog()->onIncoming( msg );
+          a.getLog()->onEvent( "Session not found for incoming message: " + Sg::toString(buf) );
+          a.getLog()->onIncoming( &buf, 1 );
         }
       }
       if( m_pSession )
-        m_pSession = a.getSession( msg, *this );
+        m_pSession = a.getSession( buf, *this );
       if( m_pSession )
-        m_pSession->next( msg, UtcTimeStamp() );
+        m_pSession->next( buf, UtcTimeStamp() );
       if( !m_pSession )
       {
         s.getMonitor().drop( m_socket );
@@ -162,14 +185,10 @@ bool SocketConnection::read( SocketAcceptor& a, SocketServer& s )
       }
 
       Session::registerSession( m_pSession->getSessionID() );
-      return true;
     }
-    else
-    {
-      readFromSocket();
-      readMessages( s.getMonitor() );
-      return true;
-    }
+
+    readMessages( s.getMonitor() );
+    return true;
   }
   catch ( SocketRecvFailed& e )
   {
@@ -197,26 +216,38 @@ bool SocketConnection::isValidSession()
 void SocketConnection::readFromSocket()
 throw( SocketRecvFailed )
 {
-  ssize_t size = recv( m_socket, m_buffer, sizeof(m_buffer), 0 );
+  Sg::sg_buf_t buf = m_parser.buffer();
+  ssize_t size = recv( m_socket, IOV_BUF(buf), IOV_LEN(buf), 0 );
   if( size <= 0 ) throw SocketRecvFailed( size );
-  m_parser.addToStream( m_buffer, size );
+  m_parser.advance( size );
 }
 
-bool SocketConnection::readMessage( std::string& msg )
+bool SocketConnection::readMessage( Sg::sg_buf_t& msg )
 {
-  try
+  while( true )
   {
-    return m_parser.readFixMessage( msg );
+    try
+    {
+      if( m_parser.parse() )
+      {
+        m_parser.retrieve( msg );
+        return true;
+      }
+      break;
+    }
+    catch ( MessageParseError& e ) {
+      if( m_pSession )
+        m_pSession->getLog()->onEvent( e.what() );
+    }
   }
-  catch ( MessageParseError& ) {}
-  return true;
+  return false;
 }
 
 void SocketConnection::readMessages( SocketMonitor& s )
 {
   if( !m_pSession ) return;
 
-  std::string msg;
+  Sg::sg_buf_t msg;
   while( readMessage( msg ) )
   {
     try

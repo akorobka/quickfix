@@ -85,6 +85,7 @@ public:
   virtual ~FileStore();
 
   bool set( int, const std::string& ) throw ( IOException );
+  bool set( int, Sg::sg_buf_ptr, int n ) throw ( IOException );
   void get( int, int, std::vector < std::string > & ) const throw ( IOException );
 
   int getNextSenderMsgSeqNum() const throw ( IOException );
@@ -94,14 +95,16 @@ public:
   void incrNextSenderMsgSeqNum() throw ( IOException );
   void incrNextTargetMsgSeqNum() throw ( IOException );
 
-  UtcTimeStamp getCreationTime() const throw ( IOException );
-
   void reset() throw ( IOException );
   void refresh() throw ( IOException );
 
 private:
-  typedef std::pair < int, int > OffsetSize;
+  typedef std::pair < FILE_OFFSET_TYPE, int > OffsetSize;
+#ifdef HAVE_BOOST
+  typedef boost::unordered_map < int, OffsetSize > NumToOffset;
+#else
   typedef std::map < int, OffsetSize > NumToOffset;
+#endif
 
   void open( bool deleteFile );
   void populateCache();
@@ -119,10 +122,10 @@ private:
   std::string m_seqNumsFileName;
   std::string m_sessionFileName;
 
-  FILE* m_msgFile;
-  FILE* m_headerFile;
-  FILE* m_seqNumsFile;
-  FILE* m_sessionFile;
+  FILE_HANDLE_TYPE m_msgFileHandle;
+  std::FILE* m_headerFile;
+  std::FILE* m_seqNumsFile;
+  std::FILE* m_sessionFile;
 };
 }
 

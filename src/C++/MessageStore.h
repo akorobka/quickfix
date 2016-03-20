@@ -65,11 +65,15 @@ public:
  */
 class MessageStore
 {
+  UtcTimeStamp m_creationTime;
+
 public:
   virtual ~MessageStore() {}
 
   virtual bool set( int, const std::string& )
   throw ( IOException ) = 0;
+  virtual bool set( int msgSeqNum, Sg::sg_buf_ptr b, int n )
+  throw ( IOException ) { return set(msgSeqNum, Sg::toString(b, n)); }
   virtual void get( int, int, std::vector < std::string > & ) const
   throw ( IOException ) = 0;
 
@@ -80,7 +84,10 @@ public:
   virtual void incrNextSenderMsgSeqNum() throw ( IOException ) = 0;
   virtual void incrNextTargetMsgSeqNum() throw ( IOException ) = 0;
 
-  virtual UtcTimeStamp getCreationTime() const throw ( IOException ) = 0;
+  inline UtcTimeStamp NOTHROW getCreationTime() const
+  { return m_creationTime; }
+  inline UtcTimeStamp NOTHROW setCreationTime( const UtcTimeStamp& creationTime )
+  { m_creationTime.m_value = creationTime.m_value; return m_creationTime; }
 
   virtual void reset() throw ( IOException ) = 0;
   virtual void refresh() throw ( IOException ) = 0;
@@ -99,6 +106,7 @@ public:
   MemoryStore() : m_nextSenderMsgSeqNum( 1 ), m_nextTargetMsgSeqNum( 1 ) {}
 
   bool set( int, const std::string& ) throw ( IOException );
+
   void get( int, int, std::vector < std::string > & ) const throw ( IOException );
 
   int getNextSenderMsgSeqNum() const throw ( IOException )
@@ -114,15 +122,10 @@ public:
   void incrNextTargetMsgSeqNum() throw ( IOException )
   { ++m_nextTargetMsgSeqNum; }
 
-  void setCreationTime( const UtcTimeStamp& creationTime ) throw ( IOException )
-  { m_creationTime = creationTime; }
-  UtcTimeStamp getCreationTime() const throw ( IOException )
-  { return m_creationTime; }
-
   void reset() throw ( IOException )
   {
     m_nextSenderMsgSeqNum = 1; m_nextTargetMsgSeqNum = 1;
-    m_messages.clear(); m_creationTime.setCurrent();
+    m_messages.clear(); setCreationTime( UtcTimeStamp());
   }
   void refresh() throw ( IOException ) {}
 
@@ -132,7 +135,6 @@ private:
   Messages m_messages;
   int m_nextSenderMsgSeqNum;
   int m_nextTargetMsgSeqNum;
-  UtcTimeStamp m_creationTime;
 };
 
 class MessageStoreFactoryExceptionWrapper

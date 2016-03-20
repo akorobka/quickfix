@@ -16,8 +16,21 @@ AC_SUBST(BOOST_PREFIX)
 
 if test $has_boost = true
 then
-    BOOST_CFLAGS="-I${BOOST_PREFIX}"
+    BOOST_LIBS="-L${BOOST_PREFIX}/lib -lboost_system -lboost_thread"
+    BOOST_CFLAGS="-I${BOOST_PREFIX}/include"
     AC_SUBST(BOOST_CFLAGS)
     AC_DEFINE(HAVE_BOOST, 1, Define if you have boost framework)
+fi
+])
+AC_DEFUN([AX_LIB_BOOST_CHECK],
+[
+if test $has_boost = true
+then
+    AC_MSG_CHECKING(for Boost)
+    AC_TRY_COMPILE(
+                [#include <boost/version.hpp>],
+                [int v = BOOST_VERSION;],
+                AC_MSG_RESULT(yes),
+                AC_MSG_ERROR(no))
 fi
 ])

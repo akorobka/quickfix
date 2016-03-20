@@ -130,7 +130,7 @@ inline timeval* SocketMonitor::getTimeval( bool poll, double timeout )
     return 0;
 #ifdef SELECT_MODIFIES_TIMEVAL
   if ( !m_timeval.tv_sec && !m_timeval.tv_usec && timeout )
-    m_timeval.tv_sec = timeout;
+    m_timeval.tv_sec = (__time_t)(timeout + 0.5);
   return &m_timeval;
 #else
 double elapsed = ( double ) ( clock() - m_ticks ) / ( double ) CLOCKS_PER_SEC;

@@ -20,6 +20,8 @@
 #ifdef _MSC_VER
 #include "stdafx.h"
 #else
+#define _XOPEN_SOURCE 500
+#define _LARGEFILE64_SOURCE
 #include "config.h"
 #endif
 
@@ -28,21 +30,23 @@
 #include "Parser.h"
 #include "Utility.h"
 #include <fstream>
+#include <stdio.h>
 
 namespace FIX
 {
 FileStore::FileStore( std::string path, const SessionID& s )
-: m_msgFile( 0 ), m_headerFile( 0 ), m_seqNumsFile( 0 ), m_sessionFile( 0 )
+: m_msgFileHandle( INVALID_FILE_HANDLE_VALUE ), m_headerFile( 0 ),
+  m_seqNumsFile( 0 ), m_sessionFile( 0 )
 {
   file_mkdir( path.c_str() );
 
   if ( path.empty() ) path = ".";
   const std::string& begin =
-    s.getBeginString().getString();
+    s.getBeginString().dupString();
   const std::string& sender =
-    s.getSenderCompID().getString();
+    s.getSenderCompID().dupString();
   const std::string& target =
-    s.getTargetCompID().getString();
+    s.getTargetCompID().dupString();
   const std::string& qualifier =
     s.getSessionQualifier();
 
@@ -70,20 +74,24 @@ FileStore::FileStore( std::string path, const SessionID& s )
 
 FileStore::~FileStore()
 {
-  if( m_msgFile ) fclose( m_msgFile );
-  if( m_headerFile ) fclose( m_headerFile );
-  if( m_seqNumsFile ) fclose( m_seqNumsFile );
-  if( m_sessionFile ) fclose( m_sessionFile );
+  if( m_msgFileHandle != INVALID_FILE_HANDLE_VALUE)
+    file_handle_close( m_msgFileHandle );
+
+  if( m_headerFile ) ::fclose( m_headerFile );
+  if( m_seqNumsFile ) ::fclose( m_seqNumsFile );
+  if( m_sessionFile ) ::fclose( m_sessionFile );
 }
 
 void FileStore::open( bool deleteFile )
 {
-  if ( m_msgFile ) fclose( m_msgFile );
-  if ( m_headerFile ) fclose( m_headerFile );
-  if ( m_seqNumsFile ) fclose( m_seqNumsFile );
-  if ( m_sessionFile ) fclose( m_sessionFile );
+  if ( m_msgFileHandle != INVALID_FILE_HANDLE_VALUE )
+    file_handle_close( m_msgFileHandle );
 
-  m_msgFile = 0;
+  if ( m_headerFile ) ::fclose( m_headerFile );
+  if ( m_seqNumsFile ) ::fclose( m_seqNumsFile );
+  if ( m_sessionFile ) ::fclose( m_sessionFile );
+
+  m_msgFileHandle = INVALID_FILE_HANDLE_VALUE;
   m_headerFile = 0;
   m_seqNumsFile = 0;
   m_sessionFile = 0;
@@ -97,9 +105,12 @@ void FileStore::open( bool deleteFile )
   }
 
   populateCache();
-  m_msgFile = file_fopen( m_msgFileName.c_str(), "r+" );
-  if ( !m_msgFile ) m_msgFile = file_fopen( m_msgFileName.c_str(), "w+" );
-  if ( !m_msgFile ) throw ConfigError( "Could not open body file: " + m_msgFileName );
+  m_msgFileHandle = file_handle_open( m_msgFileName.c_str() );
+  if ( m_msgFileHandle == INVALID_FILE_HANDLE_VALUE )
+    throw ConfigError( "Could not open body file: " + m_msgFileName );
+  FILE_OFFSET_TYPE offset;
+  FILE_OFFSET_TYPE_SET(offset, 0);
+  file_handle_seek( m_msgFileHandle, offset, FILE_POSITION_END );
 
   m_headerFile = file_fopen( m_headerFileName.c_str(), "r+" );
   if ( !m_headerFile ) m_headerFile = file_fopen( m_headerFileName.c_str(), "w+" );
@@ -125,14 +136,15 @@ void FileStore::open( bool deleteFile )
 
 void FileStore::populateCache()
 {
-  FILE* headerFile = file_fopen( m_headerFileName.c_str(), "r+" );
+  FILE* headerFile;
+  headerFile = file_fopen( m_headerFileName.c_str(), "r+" );
   if ( headerFile )
   {
     int num;
-    long offset;
-    size_t size;
-
-    while ( FILE_FSCANF( headerFile, "%d,%ld,%lu ", &num, &offset, &size ) == 3 )
+    FILE_OFFSET_TYPE offset;
+	size_t size;
+    while ( FILE_FSCANF( headerFile, "%d,%" FILE_OFFSET_TYPE_MOD "d,%d ",
+                        &num, FILE_OFFSET_TYPE_ADDR(offset), &size ) == 3 )
       m_offsets[ num ] = std::make_pair( offset, size );
     fclose( headerFile );
   }
@@ -160,10 +172,15 @@ void FileStore::populateCache()
 #endif
     if( result == 1 )
     {
-      m_cache.setCreationTime( UtcTimeStampConvertor::convert( time, true ) );
+      UtcTimeStamp uts = UtcTimeStampConvertor::convert( time, true );
+      setCreationTime( m_cache.setCreationTime( uts ) );
     }
+    else
+      setCreationTime( m_cache.getCreationTime() );
     fclose( sessionFile );
   }
+  else
+    setCreationTime( m_cache.getCreationTime() );
 }
 
 MessageStore* FileStoreFactory::create( const SessionID& s )
@@ -184,24 +201,47 @@ void FileStoreFactory::destroy( MessageStore* pStore )
 bool FileStore::set( int msgSeqNum, const std::string& msg )
 throw ( IOException )
 {
-  if ( fseek( m_msgFile, 0, SEEK_END ) ) 
-    throw IOException( "Cannot seek to end of " + m_msgFileName );
   if ( fseek( m_headerFile, 0, SEEK_END ) ) 
     throw IOException( "Cannot seek to end of " + m_headerFileName );
+  FILE_OFFSET_TYPE offset;
+  FILE_OFFSET_TYPE_SET(offset, 0);
+  offset = file_handle_seek( m_msgFileHandle, offset, FILE_POSITION_END );
+  if ( FILE_OFFSET_TYPE_VALUE(offset) < 0 ) 
+    throw IOException( "Unable to get file pointer position from " +
+                       m_msgFileName );
+  int size = msg.size();
 
-  long offset = ftell( m_msgFile );
-  if ( offset < 0 ) 
-    throw IOException( "Unable to get file pointer position from " + m_msgFileName );
-  size_t size = msg.size();
-
-  if ( fprintf( m_headerFile, "%d,%ld,%lu ", msgSeqNum, offset, size ) < 0 )
+  if ( fprintf( m_headerFile, "%d,%" FILE_OFFSET_TYPE_MOD "d,%d ",
+                msgSeqNum, FILE_OFFSET_TYPE_VALUE(offset), size ) < 0 )
     throw IOException( "Unable to write to file " + m_headerFileName );
   m_offsets[ msgSeqNum ] = std::make_pair( offset, size );
-  fwrite( msg.c_str(), sizeof( char ), msg.size(), m_msgFile );
-  if ( ferror( m_msgFile ) ) 
+  if ( size != file_handle_write( m_msgFileHandle, msg.c_str(), size ) )
     throw IOException( "Unable to write to file " + m_msgFileName );
-  if ( fflush( m_msgFile ) == EOF ) 
-    throw IOException( "Unable to flush file " + m_msgFileName );
+  if ( fflush( m_headerFile ) == EOF ) 
+    throw IOException( "Unable to flush file " + m_headerFileName );
+  return true;
+}
+
+bool FileStore::set( int msgSeqNum, Sg::sg_buf_ptr b, int n )
+throw ( IOException )
+{
+  if ( fseek( m_headerFile, 0, SEEK_END ) ) 
+    throw IOException( "Cannot seek to end of " + m_headerFileName );
+  FILE_OFFSET_TYPE offset;
+  FILE_OFFSET_TYPE_SET(offset, 0);
+  offset = file_handle_seek( m_msgFileHandle, offset, FILE_POSITION_END );
+  if ( FILE_OFFSET_TYPE_VALUE(offset) < 0 ) 
+    throw IOException( "Unable to get file pointer position from " + m_msgFileName );
+  int size = Sg::size(b, n);
+
+  if ( fprintf( m_headerFile, "%d,%" FILE_OFFSET_TYPE_MOD "d,%d ",
+                msgSeqNum, FILE_OFFSET_TYPE_VALUE(offset), size ) < 0 )
+    throw IOException( "Unable to write to file " + m_headerFileName );
+  m_offsets[ msgSeqNum ] = std::make_pair( offset, size );
+
+  if ( Sg::writev( m_msgFileHandle, b, n ) < size )
+    throw IOException( "Unable to write to file " + m_msgFileName );
+
   if ( fflush( m_headerFile ) == EOF ) 
     throw IOException( "Unable to flush file " + m_headerFileName );
   return true;
@@ -212,11 +252,13 @@ void FileStore::get( int begin, int end,
 throw ( IOException )
 {
   result.clear();
-  std::string msg;
   for ( int i = begin; i <= end; ++i )
   {
-    if ( get( i, msg ) )
-      result.push_back( msg );
+    std::string msg;
+    if ( get( i, msg ) ) {
+      result.push_back( std::string() );
+      result.back().swap(msg);
+    }
   }
 }
 
@@ -254,36 +296,17 @@ void FileStore::incrNextTargetMsgSeqNum() throw ( IOException )
   setSeqNum();
 }
 
-UtcTimeStamp FileStore::getCreationTime() const throw ( IOException )
-{
-  return m_cache.getCreationTime();
-}
-
 void FileStore::reset() throw ( IOException )
 {
-  try
-  {
-    m_cache.reset();
-    open( true );
-    setSession();
-  }
-  catch( std::exception& e )
-  {
-    throw IOException( e.what() );
-  }
+  m_cache.reset();
+  open( true );
+  setSession();
 }
 
 void FileStore::refresh() throw ( IOException )
 {
-  try
-  {
-    m_cache.reset();
-    open( false );
-  }
-  catch( std::exception& e )
-  {
-    throw IOException( e.what() );
-  }
+  m_cache.reset();
+  open( false );
 }
 
 void FileStore::setSeqNum()
@@ -314,18 +337,10 @@ throw ( IOException )
   NumToOffset::const_iterator find = m_offsets.find( msgSeqNum );
   if ( find == m_offsets.end() ) return false;
   const OffsetSize& offset = find->second;
-  if ( fseek( m_msgFile, offset.first, SEEK_SET ) ) 
-    throw IOException( "Unable to seek in file " + m_msgFileName );
-  char* buffer = new char[ offset.second + 1 ];
-  size_t result = fread( buffer, sizeof( char ), offset.second, m_msgFile );
-  if ( ferror( m_msgFile ) || result != (size_t)offset.second ) 
-  {
-    delete [] buffer;
+  msg.resize(offset.second);
+  if ( file_handle_read_at( m_msgFileHandle, const_cast<char*>(msg.c_str()),
+                            offset.second, offset.first) < offset.second )
     throw IOException( "Unable to read from file " + m_msgFileName );
-  }
-  buffer[ offset.second ] = 0;
-  msg = buffer;
-  delete [] buffer;
   return true;
 }
 

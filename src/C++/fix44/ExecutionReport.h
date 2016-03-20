@@ -8,8 +8,9 @@ namespace FIX44
 
   class ExecutionReport : public Message
   {
+    static FIX::MsgType::Pack PackedType() { return FIX::MsgType::Pack("8"); }
   public:
-    ExecutionReport() : Message(MsgType()) {}
+    ExecutionReport() : Message(PackedType()) {}
     ExecutionReport(const FIX::Message& m) : Message(m) {}
     ExecutionReport(const Message& m) : Message(m) {}
     ExecutionReport(const ExecutionReport& m) : Message(m) {}
@@ -24,16 +25,37 @@ namespace FIX44
       const FIX::LeavesQty& aLeavesQty,
       const FIX::CumQty& aCumQty,
       const FIX::AvgPx& aAvgPx )
-    : Message(MsgType())
+    : Message(PackedType())
     {
-      set(aOrderID);
-      set(aExecID);
-      set(aExecType);
-      set(aOrdStatus);
-      set(aSide);
-      set(aLeavesQty);
-      set(aCumQty);
-      set(aAvgPx);
+      Sequence::push_back_to(*this, aAvgPx);
+      Sequence::push_back_to(*this, aCumQty);
+      Sequence::push_back_to(*this, aExecID);
+      Sequence::push_back_to(*this, aOrderID);
+      Sequence::push_back_to(*this, aOrdStatus);
+      Sequence::push_back_to(*this, aSide);
+      Sequence::push_back_to(*this, aExecType);
+      Sequence::push_back_to(*this, aLeavesQty);
+    }
+
+    ExecutionReport(
+      const FIX::OrderID::Pack& aOrderID,
+      const FIX::ExecID::Pack& aExecID,
+      const FIX::ExecType::Pack& aExecType,
+      const FIX::OrdStatus::Pack& aOrdStatus,
+      const FIX::Side::Pack& aSide,
+      const FIX::LeavesQty::Pack& aLeavesQty,
+      const FIX::CumQty::Pack& aCumQty,
+      const FIX::AvgPx::Pack& aAvgPx )
+    : Message(PackedType())
+    {
+      Sequence::push_back_to(*this, aAvgPx);
+      Sequence::push_back_to(*this, aCumQty);
+      Sequence::push_back_to(*this, aExecID);
+      Sequence::push_back_to(*this, aOrderID);
+      Sequence::push_back_to(*this, aOrdStatus);
+      Sequence::push_back_to(*this, aSide);
+      Sequence::push_back_to(*this, aExecType);
+      Sequence::push_back_to(*this, aLeavesQty);
     }
 
     FIELD_SET(*this, FIX::OrderID);

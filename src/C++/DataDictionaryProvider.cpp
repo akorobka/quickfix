@@ -34,22 +34,24 @@ DataDictionaryProvider::DataDictionaryProvider( const DataDictionaryProvider& co
   *this = copy;
 }
 
-const DataDictionary& DataDictionaryProvider::getSessionDataDictionary
-(const BeginString& beginString) const throw( DataDictionaryNotFound )
+const DataDictionary NOTHROW_PRE & NOTHROW_POST HEAVYUSE
+DataDictionaryProvider::getSessionDataDictionary
+(const BeginString& beginString) throw( DataDictionaryNotFound )
 {
-  std::map<std::string, ptr::shared_ptr<DataDictionary> >::const_iterator find =
-    m_transportDictionaries.find(beginString);
+  dictionary_map_t::iterator find =
+    m_transportDictionaries.find(beginString.forString( String::RvalFunc() ));
   if( find != m_transportDictionaries.end() )
     return *find->second;
   
   return emptyDataDictionary;
 }
 
-const DataDictionary& DataDictionaryProvider::getApplicationDataDictionary
-(const ApplVerID& applVerID) const throw( DataDictionaryNotFound )
+const DataDictionary NOTHROW_PRE & NOTHROW_POST HEAVYUSE
+DataDictionaryProvider::getApplicationDataDictionary
+(const ApplVerID& applVerID) throw( DataDictionaryNotFound )
 {
-  std::map<std::string, ptr::shared_ptr<DataDictionary> >::const_iterator find =
-    m_applicationDictionaries.find(applVerID);
+  dictionary_map_t::iterator find =
+    m_applicationDictionaries.find(applVerID.forString( String::RvalFunc() ));
   if( find != m_applicationDictionaries.end() )
     return *find->second;
 
@@ -59,13 +61,13 @@ const DataDictionary& DataDictionaryProvider::getApplicationDataDictionary
 void DataDictionaryProvider::addTransportDataDictionary
 (const BeginString& beginString, ptr::shared_ptr<DataDictionary> pDD)
 {
-  m_transportDictionaries[beginString.getValue()] = pDD;
+  m_transportDictionaries[beginString.forString( String::RvalFunc() )] = pDD;
 }
 
 void DataDictionaryProvider::addApplicationDataDictionary
 (const ApplVerID& applVerID, ptr::shared_ptr<DataDictionary> pDD)
 {
-  m_applicationDictionaries[applVerID.getValue()] = pDD;
+  m_applicationDictionaries[applVerID.forString( String::RvalFunc() )] = pDD;
 }
 }
 

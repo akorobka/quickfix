@@ -98,7 +98,9 @@ public:
   static std::set<SessionID> getSessions();
   static bool doesSessionExist( const SessionID& );
   static Session* lookupSession( const SessionID& );
+  static Session* lookupSession( Sg::sg_buf_t, bool reverse = false );
   static Session* lookupSession( const std::string&, bool reverse = false );
+  
   static bool isSessionRegistered( const SessionID& );
   static Session* registerSession( const SessionID& );
   static void unregisterSession( const SessionID& );
@@ -202,42 +204,83 @@ public:
   }
 
   bool send( Message& );
-  void next();
+  template <typename B> bool HEAVYUSE tx( B b, int n )
+  {
+    m_state.SessionState::onOutgoing( b, n );
+    return m_pResponder->send( b, n );
+  }
+
+  void next( const Message&, const DataDictionary& sessionDD, const UtcTimeStamp& timeStamp, bool queued );
+  void next( const Message& msg, const UtcTimeStamp& timeStamp, bool queued = false )
+  { next( msg, m_dataDictionaryProvider.getSessionDataDictionary(m_sessionID.getBeginString()), timeStamp, queued ); }
+
+  void next( Sg::sg_buf_t buf, const UtcTimeStamp& timeStamp, bool queued = false );
+  void next( const std::string& message, const UtcTimeStamp& timeStamp, bool queued = false )
+  {
+    Sg::sg_buf_t buf = IOV_BUF_INITIALIZER( String::c_str(message),
+                                            String::length(message) ); 
+    next( buf, timeStamp, queued );
+  }
+
   void next( const UtcTimeStamp& timeStamp );
-  void next( const std::string&, const UtcTimeStamp& timeStamp, bool queued = false );
-  void next( const Message&, const UtcTimeStamp& timeStamp, bool queued = false );
+  void next()
+  { next( UtcTimeStamp() ); }
+
   void disconnect();
 
   int getExpectedSenderNum() { return m_state.getNextSenderMsgSeqNum(); }
   int getExpectedTargetNum() { return m_state.getNextTargetMsgSeqNum(); }
 
   Log* getLog() { return &m_state; }
-  const MessageStore* getStore() { return &m_state; }
+  const MessageStore* getStore() { return m_state.store(); }
+  Mutex* getMutex() { return &m_mutex; }
 
 private:
+
   typedef std::map < SessionID, Session* > Sessions;
   typedef std::set < SessionID > SessionIDs;
 
   static bool addSession( Session& );
   static void removeSession( Session& );
 
-  bool send( const std::string& );
+  bool tx( const std::string& );
   bool sendRaw( Message&, int msgSeqNum = 0 );
   bool resend( Message& message );
   void persist( const Message&, const std::string& ) throw ( IOException );
+  template <typename B> void persist( const Message& message, B buf, int n) throw ( IOException ) {
+    if( m_persistMessages )
+    {
+      MsgSeqNum msgSeqNum;
+      message.getHeader().getField( msgSeqNum );
+      m_state.set( msgSeqNum, buf, n );
+    }
+    m_state.incrNextSenderMsgSeqNum();
+  }
 
-  void insertSendingTime( Header& );
-  void insertOrigSendingTime( Header&,
-                              const UtcTimeStamp& when = UtcTimeStamp () );
-  void fill( Header& );
+  void insertSendingTime( Header& header,
+                          const UtcTimeStamp& now = UtcTimeStamp () )
+  {
+    FieldMap::Sequence::set_in_ordered(header, SendingTime::Pack(now,
+                     m_millisecondsAllowed && m_millisecondsInTimeStamp) );
+  }
 
-  bool isGoodTime( const SendingTime& sendingTime )
+  void insertOrigSendingTime( Header& header,
+                              const UtcTimeStamp& when = UtcTimeStamp () )
+  {
+    FieldMap::Sequence::set_in_ordered(header, OrigSendingTime::Pack(when,
+                     m_millisecondsAllowed && m_millisecondsInTimeStamp) );
+  }
+
+  void fill( Header&, UtcTimeStamp now = UtcTimeStamp()  );
+  Message::admin_trait fill( Header&, int num, UtcTimeStamp now = UtcTimeStamp() );
+
+  inline bool isGoodTime( const SendingTime& sendingTime,
+                          const UtcTimeStamp& now )
   {
     if ( !m_checkLatency ) return true;
-    UtcTimeStamp now;
     return labs( now - sendingTime ) <= m_maxLatency;
   }
-  bool checkSessionTime( const UtcTimeStamp& timeStamp )
+  inline bool checkSessionTime( const UtcTimeStamp& timeStamp )
   {
     UtcTimeStamp creationTime = m_state.getCreationTime();
     return m_sessionTime.isInSameRange( timeStamp, creationTime );
@@ -252,13 +295,14 @@ private:
     if( !m_checkCompId ) return true;
 
     return
-      m_sessionID.getSenderCompID().getValue() == targetCompID.getValue()
-      && m_sessionID.getTargetCompID().getValue() == senderCompID.getValue();
+      m_sessionID.getSenderCompID() == targetCompID
+      && m_sessionID.getTargetCompID() == senderCompID;
   }
   bool shouldSendReset();
 
   bool validLogonState( const MsgType& msgType );
-  void fromCallback( const MsgType& msgType, const Message& msg,
+  bool validLogonState( const char* msgTypeValue );
+  void fromCallback( const char* msgTypeValue, const Message& msg,
                      const SessionID& sessionID );
 
   void doBadTime( const Message& msg );
@@ -266,6 +310,16 @@ private:
   bool doPossDup( const Message& msg );
   bool doTargetTooLow( const Message& msg );
   void doTargetTooHigh( const Message& msg );
+
+  struct OnNextQueued {
+    Session& session;
+    const UtcTimeStamp& tstamp;
+
+    OnNextQueued(Session& s, const UtcTimeStamp& ts)
+    : session(s), tstamp(ts) {}
+    bool operator()(int num, Message&);
+  };
+
   void nextQueued( const UtcTimeStamp& timeStamp );
   bool nextQueued( int num, const UtcTimeStamp& timeStamp );
 
@@ -292,14 +346,25 @@ private:
   void populateRejectReason( Message&, int field, const std::string& );
   void populateRejectReason( Message&, const std::string& );
 
+  bool verify( const Message& msg, const UtcTimeStamp& now,
+                                   const Header& header,
+                                   const char* pMsgTypeValue,
+                                   bool  checkTooHigh, bool checkTooLow );
+
   bool verify( const Message& msg,
-               bool checkTooHigh = true, bool checkTooLow = true );
+               bool checkTooHigh = true, bool checkTooLow = true ) {
+    const Header&  header = msg.getHeader();
+    const MsgType* pType = FIELD_GET_PTR( header, MsgType );
+    return verify( msg, UtcTimeStamp(), header,
+                   pType ? pType->forString(String::CstrFunc()) : NULL,
+                   checkTooHigh, checkTooLow );
+  }
 
   bool set( int s, const Message& m );
   bool get( int s, Message& m ) const;
 
   Application& m_application;
-  SessionID m_sessionID;
+  const SessionID m_sessionID;
   TimeRange m_sessionTime;
   TimeRange m_logonTime;
 
@@ -313,9 +378,10 @@ private:
   bool m_resetOnLogout;
   bool m_resetOnDisconnect;
   bool m_refreshOnLogon;
-  bool m_millisecondsInTimeStamp;
   bool m_persistMessages;
   bool m_validateLengthAndChecksum;
+  bool m_millisecondsInTimeStamp;
+  const bool m_millisecondsAllowed;
 
   SessionState m_state;
   DataDictionaryProvider m_dataDictionaryProvider;
@@ -323,11 +389,116 @@ private:
   LogFactory* m_pLogFactory;
   Responder* m_pResponder;
   Mutex m_mutex;
+  FieldMap::allocator_type m_rcvAllocator;
+  std::string m_sendStringBuffer;
 
   static Sessions s_sessions;
   static SessionIDs s_sessionIDs;
   static Sessions s_registered;
   static Mutex s_mutex;
+
+  class StringBufferFactory {
+	std::string m_buffer;
+
+	public:
+		typedef std::string buffer_type;
+
+		buffer_type& buffer(size_t sz) {
+			m_buffer.clear();
+			m_buffer.reserve(sz);
+			return m_buffer;
+		}
+		const buffer_type& flush() {
+			return m_buffer;
+		}
+  };
+
+  StringBufferFactory s_buffer_factory;
+
+  class SgBufferFactory {
+	public:
+
+		class SgBuffer {
+			static const int UIO_ARENA_SIZE = 32768;
+			static const int UIO_SIZE = 8;
+
+			Sg::sg_buf_t	sg_[UIO_SIZE];
+			std::size_t	sz_;
+			int		n_;
+			
+			public:
+
+			SgBuffer() : sz_(UIO_ARENA_SIZE), n_(0) {
+				ALIGNED_ALLOC(IOV_BUF(sg_[0]), sz_ + 16, 16);
+				IOV_LEN(sg_[0]) = 0;
+			}
+			~SgBuffer() {
+				ALIGNED_FREE(IOV_BUF(sg_[0]));
+			}
+
+			SgBuffer& append(const char* s, std::size_t l) {
+				Sg::sg_buf_ptr e = sg_ + n_;
+				if (l < 32 || n_ >= (UIO_SIZE - 1)) {
+					char* p = (char*)IOV_BUF(*e);
+					p += IOV_LEN(*e);
+					IOV_LEN(*e) += l;
+					std::size_t len = (l >> 3) + ((l & 7) != 0);
+					uint64_t* dst = (uint64_t*)p;
+					const uint64_t* src = (const uint64_t*)s;
+					while (len-- > 0)  {
+						*dst++ = *src++;
+					}
+				} else {
+					char* p = (char*)IOV_BUF(*e);
+					IOV_BUF(sg_[++n_]) = (Sg::sg_ptr_t)s;
+					IOV_LEN(sg_[n_++]) = l;
+					p += IOV_LEN(*e);
+					IOV_BUF(sg_[n_]) = p;
+					IOV_LEN(sg_[n_]) = 0;
+				}
+				return *this;
+			}
+			SgBuffer& HEAVYUSE append(int field, int sz, const char* s, std::size_t l) {
+				Sg::sg_buf_ptr e = sg_ + n_;
+				char* p = (char*)IOV_BUF(*e);
+				p += IOV_LEN(*e);
+				Util::Tag::generate(p, field, sz);
+				p[sz] = '=';
+				IOV_LEN(*e) += sz + 1;
+				append(s, l);
+				e = sg_ + n_;
+				p = (char*)IOV_BUF(*e);
+				p += IOV_LEN(*e)++;
+				*p = '\001';
+				return *this;
+			}
+
+			SgBuffer& reset(std::size_t sz) {
+				if (sz > sz_) {
+					ALIGNED_FREE(IOV_BUF(sg_[0]));
+					ALIGNED_ALLOC(IOV_BUF(sg_[0]), sz_ + 16, 16);
+					sz_ = sz;
+				}
+				n_ = 0;
+				IOV_LEN(sg_[0]) = 0;
+				return *this;
+			}
+
+			Sg::sg_buf_ptr iovec() const { return (Sg::sg_buf_ptr)sg_; }
+			int elements() const { return n_ + 1; }
+		};
+
+		typedef SgBuffer buffer_type;
+
+		buffer_type& buffer(size_t sz) {
+			return m_buffer.reset(sz);
+		}
+
+	private:
+		SgBuffer m_buffer;
+  };
+
+  SgBufferFactory sg_buffer_factory;
 
 };
 }

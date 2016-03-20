@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<VisualStudioPropertySheet
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="OptionalSettings_vs9"
+	>
+	<UserMacro
+		Name="BOOST_INCLUDE"
+		Value="D:\Dev\boost_1_54_0"
+	/>
+	<UserMacro
+		Name="TBB_INCLUDE"
+		Value="D:\Dev\tbb42_20130725oss\include"
+	/>
+	<UserMacro
+		Name="BOOST_LIB"
+		Value="D:\Dev\boost_1_54_0\lib32-msvc-9.0"
+	/>
+	<UserMacro
+		Name="TBB_LIB"
+		Value="D:\Dev\tbb42_20130725oss\lib\ia32\vc9"
+	/>
+	<UserMacro
+		Name="TBB_DEPS"
+		Value="tbb.lib tbbmalloc.lib"
+	/>
+	<UserMacro
+		Name="WITH_BOOST"
+		Value="HAVE_BOOST=1"
+	/>
+	<UserMacro
+		Name="WITH_TBB"
+		Value="HAVE_TBB=1"
+	/>
+</VisualStudioPropertySheet>

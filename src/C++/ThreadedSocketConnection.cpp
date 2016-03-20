@@ -21,6 +21,7 @@
 #include "stdafx.h"
 #else
 #include "config.h"
+#include <poll.h>
 #endif
 
 #include "ThreadedSocketConnection.h"
@@ -36,10 +37,7 @@ ThreadedSocketConnection::ThreadedSocketConnection
 : m_socket( s ), m_pLog( pLog ),
   m_sessions( sessions ), m_pSession( 0 ),
   m_disconnect( false )
-{
-  FD_ZERO( &m_fds );
-  FD_SET( m_socket, &m_fds );
-}
+{}
 
 ThreadedSocketConnection::ThreadedSocketConnection
 ( const SessionID& sessionID, int s,
@@ -50,8 +48,6 @@ ThreadedSocketConnection::ThreadedSocketConnection
     m_pSession( Session::lookupSession( sessionID ) ),
     m_disconnect( false )
 {
-  FD_ZERO( &m_fds );
-  FD_SET( m_socket, &m_fds );
   if ( m_pSession ) m_pSession->setResponder( this );
 }
 
@@ -66,44 +62,101 @@ ThreadedSocketConnection::~ThreadedSocketConnection()
 
 bool ThreadedSocketConnection::send( const std::string& msg )
 {
-  int totalSent = 0;
-  while(totalSent < (int)msg.length())
-  {
-    ssize_t sent = socket_send( m_socket, msg.c_str() + totalSent, msg.length() );
-    if(sent < 0) return false;
-    totalSent += sent;
-  }
+  return socket_send( m_socket, String::c_str(msg), String::length(msg) ) > 0;
+}
 
-  return true;
+bool ThreadedSocketConnection::send( Sg::sg_buf_ptr bufs, int n )
+{
+  return Sg::send(m_socket, bufs, n) > 0;
 }
 
 bool ThreadedSocketConnection::connect()
 {
-  return socket_connect(getSocket(), m_address.c_str(), m_port) >= 0;
+  return socket_connect(getSocket(), String::c_str(m_address), m_port) >= 0;
 }
 
 void ThreadedSocketConnection::disconnect()
-{  
+{
   m_disconnect = true;
   socket_close( m_socket );
+  m_parser.reset();
 }
 
-bool ThreadedSocketConnection::read()
+inline bool HEAVYUSE ThreadedSocketConnection::readMessage( Sg::sg_buf_t& msg )
 {
-  struct timeval timeout = { 1, 0 };
-  fd_set readset = m_fds;
+  while( true )
+  {
+    try
+    {
+      if( m_parser.parse() )
+      {
+        m_parser.retrieve( msg );
+        return true;
+      }
+      break;
+    }
+    catch ( MessageParseError& e )
+    {
+      if( m_pLog )
+      {
+        m_pLog->onEvent( e.what() );
+      }
+    }
+  }
+  return false;
+}
 
+inline void HEAVYUSE ThreadedSocketConnection::processStream()
+{
+  Sg::sg_buf_t buf;
+  while( readMessage( buf ) )
+  {
+    if ( !m_pSession )
+    {
+      if ( !setSession( buf ) )
+      { disconnect(); break; }
+    }
+    try
+    {
+      m_ts.setCurrent();
+      m_pSession->next( buf, m_ts );
+    }
+    catch( InvalidMessage& )
+    {
+      if( !m_pSession->isLoggedOn() )
+      {
+        disconnect();
+        return;
+      }
+    }
+  }
+}
+
+bool HEAVYUSE ThreadedSocketConnection::read()
+{
   try
   {
     // Wait for input (1 second timeout)
-    int result = select( 1 + m_socket, &readset, 0, 0, &timeout );
+#ifndef _MSC_VER
+	struct pollfd pfd = { m_socket, POLLIN | POLLPRI, 0 };
+    int result = poll(&pfd, 1, 1000);
+#else
+	struct pollfd pfd = { m_socket, POLLIN, 0 };
+    int result = WSAPoll(&pfd, 1, 1000);
+#endif
 
     if( result > 0 ) // Something to read
     {
       // We can read without blocking
-      ssize_t size = recv( m_socket, m_buffer, sizeof(m_buffer), 0 );
-      if ( size <= 0 ) { throw SocketRecvFailed( size ); }
-      m_parser.addToStream( m_buffer, size );
+      Sg::sg_buf_t buf = m_parser.buffer();
+      ssize_t size = recv( m_socket, IOV_BUF(buf), IOV_LEN(buf), 0 );
+      if ( LIKELY(size > 0) )
+      {
+        m_parser.advance( size );
+        processStream();
+      }
+      else
+        throw SocketRecvFailed( size );
     }
     else if( result == 0 && m_pSession ) // Timeout
     {
@@ -113,8 +166,6 @@ bool ThreadedSocketConnection::read()
     {
       throw SocketRecvFailed( result );
     }
-
-    processStream();
     return true;
   }
   catch ( SocketRecvFailed& e )
@@ -136,51 +187,15 @@ bool ThreadedSocketConnection::read()
   }
 }
 
-bool ThreadedSocketConnection::readMessage( std::string& msg )
-throw( SocketRecvFailed )
-{
-  try
-  {
-    return m_parser.readFixMessage( msg );
-  }
-  catch ( MessageParseError& ) {}
-  return true;
-}
-
-void ThreadedSocketConnection::processStream()
-{
-  std::string msg;
-  while( readMessage(msg) )
-  {
-    if ( !m_pSession )
-    {
-      if ( !setSession( msg ) )
-      { disconnect(); continue; }
-    }
-    try
-    {
-      m_pSession->next( msg, UtcTimeStamp() );
-    }
-    catch( InvalidMessage& )
-    {
-      if( !m_pSession->isLoggedOn() )
-      {
-        disconnect();
-        return;
-      }
-    }
-  }
-}
-
-bool ThreadedSocketConnection::setSession( const std::string& msg )
+bool ThreadedSocketConnection::setSession( Sg::sg_buf_t& msg )
 {
   m_pSession = Session::lookupSession( msg, true );
   if ( !m_pSession ) 
   {
     if( m_pLog )
     {
-      m_pLog->onEvent( "Session not found for incoming message: " + msg );
-      m_pLog->onIncoming( msg );
+      m_pLog->onEvent( "Session not found for incoming message: " + Sg::toString(msg) );
+      m_pLog->onIncoming( &msg, 1 );
     }
     return false;
   }

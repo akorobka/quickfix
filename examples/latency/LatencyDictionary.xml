@@ -1,0 +1,173 @@
+<fix major='4' type='FIX' servicepack='0' minor='2'>
+ <header>
+  <field name='BeginString' required='Y' />
+  <field name='BodyLength' required='Y' />
+  <field name='MsgType' required='Y' />
+  <field name='SenderCompID' required='Y' />
+  <field name='TargetCompID' required='Y' />
+  <field name='MsgSeqNum' required='Y' />
+  <field name='SendingTime' required='Y' />
+ </header>
+ <messages>
+  <message name='Logon' msgcat='admin' msgtype='A'>
+     <field name='EncryptMethod' required='Y' />
+        <field name='HeartBtInt' required='Y' />
+           <field name='RawDataLength' required='N' />
+              <field name='RawData' required='N' />
+                 <field name='ResetSeqNumFlag' required='N' />
+                    <field name='MaxMessageSize' required='N' />
+                       <group name='NoMsgTypes' required='N'>
+                           <field name='RefMsgType' required='N' />
+                               <field name='MsgDirection' required='N' />
+                                  </group>
+                                    </message>
+  <message name='NewOrderSingle' msgcat='app' msgtype='D'>
+   <field name='ClOrdID' required='Y' />
+   <field name='HandlInst' required='Y' />
+   <field name='Symbol' required='Y' />
+   <field name='Side' required='Y' />
+   <field name='OrderQty' required='Y' />
+   <field name='OrdType' required='Y' />
+   <field name='TransactTime' required='Y' />
+  </message>
+  <message name='Logout' msgcat='admin' msgtype='5'>
+     <field name='Text' required='N' />
+        <field name='EncodedTextLen' required='N' />
+           <field name='EncodedText' required='N' />
+             </message>
+ </messages>
+ <trailer>
+  <field name='SignatureLength' required='N' />
+  <field name='Signature' required='N' />
+  <field name='CheckSum' required='Y' />
+ </trailer>
+ <components />
+ <fields>
+  <field number='8' name='BeginString' type='STRING' />
+  <field number='9' name='BodyLength' type='INT' />
+  <field number='10' name='CheckSum' type='STRING' />
+  <field number='11' name='ClOrdID' type='STRING' />
+  <field number='21' name='HandlInst' type='CHAR'>
+   <value enum='1' description='AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION' />
+   <value enum='2' description='AUTOMATED_EXECUTION_ORDER_PUBLIC_BROKER_INTERVENTION_OK' />
+   <value enum='3' description='MANUAL_ORDER_BEST_EXECUTION' />
+  </field>
+  <field number='34' name='MsgSeqNum' type='INT' />
+  <field number='35' name='MsgType' type='STRING'>
+   <value enum='0' description='HEARTBEAT' />
+   <value enum='1' description='TEST_REQUEST' />
+   <value enum='2' description='RESEND_REQUEST' />
+   <value enum='3' description='REJECT' />
+   <value enum='4' description='SEQUENCE_RESET' />
+   <value enum='5' description='LOGOUT' />
+   <value enum='6' description='INDICATION_OF_INTEREST' />
+   <value enum='7' description='ADVERTISEMENT' />
+   <value enum='8' description='EXECUTION_REPORT' />
+   <value enum='9' description='ORDER_CANCEL_REJECT' />
+   <value enum='a' description='QUOTE_STATUS_REQUEST' />
+   <value enum='A' description='LOGON' />
+   <value enum='B' description='NEWS' />
+   <value enum='b' description='QUOTE_ACKNOWLEDGEMENT' />
+   <value enum='C' description='EMAIL' />
+   <value enum='c' description='SECURITY_DEFINITION_REQUEST' />
+   <value enum='D' description='ORDER_SINGLE' />
+   <value enum='d' description='SECURITY_DEFINITION' />
+   <value enum='E' description='ORDER_LIST' />
+   <value enum='e' description='SECURITY_STATUS_REQUEST' />
+   <value enum='f' description='SECURITY_STATUS' />
+   <value enum='F' description='ORDER_CANCEL_REQUEST' />
+   <value enum='G' description='ORDER_CANCEL_REPLACE_REQUEST' />
+   <value enum='g' description='TRADING_SESSION_STATUS_REQUEST' />
+   <value enum='H' description='ORDER_STATUS_REQUEST' />
+   <value enum='h' description='TRADING_SESSION_STATUS' />
+   <value enum='i' description='MASS_QUOTE' />
+   <value enum='j' description='BUSINESS_MESSAGE_REJECT' />
+   <value enum='J' description='ALLOCATION' />
+   <value enum='K' description='LIST_CANCEL_REQUEST' />
+   <value enum='k' description='BID_REQUEST' />
+   <value enum='l' description='BID_RESPONSE' />
+   <value enum='L' description='LIST_EXECUTE' />
+   <value enum='m' description='LIST_STRIKE_PRICE' />
+   <value enum='M' description='LIST_STATUS_REQUEST' />
+   <value enum='N' description='LIST_STATUS' />
+   <value enum='P' description='ALLOCATION_ACK' />
+   <value enum='Q' description='DONT_KNOW_TRADE' />
+   <value enum='R' description='QUOTE_REQUEST' />
+   <value enum='S' description='QUOTE' />
+   <value enum='T' description='SETTLEMENT_INSTRUCTIONS' />
+   <value enum='V' description='MARKET_DATA_REQUEST' />
+   <value enum='W' description='MARKET_DATA_SNAPSHOT_FULL_REFRESH' />
+   <value enum='X' description='MARKET_DATA_INCREMENTAL_REFRESH' />
+   <value enum='Y' description='MARKET_DATA_REQUEST_REJECT' />
+   <value enum='Z' description='QUOTE_CANCEL' />
+  </field>
+  <field number='38' name='OrderQty' type='QTY' />
+  <field number='40' name='OrdType' type='CHAR'>
+   <value enum='1' description='MARKET' />
+   <value enum='2' description='LIMIT' />
+   <value enum='3' description='STOP' />
+   <value enum='4' description='STOP_LIMIT' />
+   <value enum='5' description='MARKET_ON_CLOSE' />
+   <value enum='6' description='WITH_OR_WITHOUT' />
+   <value enum='7' description='LIMIT_OR_BETTER' />
+   <value enum='8' description='LIMIT_WITH_OR_WITHOUT' />
+   <value enum='9' description='ON_BASIS' />
+   <value enum='A' description='ON_CLOSE' />
+   <value enum='B' description='LIMIT_ON_CLOSE' />
+   <value enum='C' description='FOREX_C' />
+   <value enum='D' description='PREVIOUSLY_QUOTED' />
+   <value enum='E' description='PREVIOUSLY_INDICATED' />
+   <value enum='F' description='FOREX_F' />
+   <value enum='G' description='FOREX_G' />
+   <value enum='H' description='FOREX_H' />
+   <value enum='I' description='FUNARI' />
+   <value enum='P' description='PEGGED' />
+  </field>
+  <field number='49' name='SenderCompID' type='STRING' />
+  <field number='52' name='SendingTime' type='UTCTIMESTAMP' />
+  <field number='54' name='Side' type='CHAR'>
+   <value enum='1' description='BUY' />
+   <value enum='2' description='SELL' />
+   <value enum='3' description='BUY_MINUS' />
+   <value enum='4' description='SELL_PLUS' />
+   <value enum='5' description='SELL_SHORT' />
+   <value enum='6' description='SELL_SHORT_EXEMPT' />
+   <value enum='7' description='UNDISCLOSED' />
+   <value enum='8' description='CROSS' />
+   <value enum='9' description='CROSS_SHORT' />
+  </field>
+  <field number='55' name='Symbol' type='STRING' />
+  <field number='56' name='TargetCompID' type='STRING' />
+  <field number='57' name='TargetSubID' type='STRING' />
+  <field number='58' name='Text' type='STRING' />
+  <field number='60' name='TransactTime' type='UTCTIMESTAMP' />
+  <field number='89' name='Signature' type='DATA' />
+  <field number='93' name='SignatureLength' type='LENGTH' />
+  <field number='95' name='RawDataLength' type='LENGTH' />
+  <field number='96' name='RawData' type='DATA' />
+  <field number='98' name='EncryptMethod' type='INT'>
+   <value enum='0' description='NONE' />
+   <value enum='1' description='PKCS' />
+   <value enum='2' description='DES' />
+   <value enum='3' description='PKCS_DES' />
+   <value enum='4' description='PGP_DES' />
+   <value enum='5' description='PGP_DES_MD5' />
+   <value enum='6' description='PEM_DES_MD5' />
+  </field>
+  <field number='108' name='HeartBtInt' type='INT' />
+  <field number='141' name='ResetSeqNumFlag' type='BOOLEAN'>
+   <value enum='N' description='NO' />
+   <value enum='Y' description='YES' />
+  </field>
+  <field number='354' name='EncodedTextLen' type='LENGTH' />
+  <field number='355' name='EncodedText' type='DATA' />
+  <field number='372' name='RefMsgType' type='STRING' />
+  <field number='383' name='MaxMessageSize' type='INT' />
+  <field number='384' name='NoMsgTypes' type='INT' />
+  <field number='385' name='MsgDirection' type='CHAR'>
+   <value enum='R' description='RECEIVE' />
+   <value enum='S' description='SEND' />
+  </field>
+  <field number='386' name='NoTradingSessions' type='INT' />
+ </fields>
+</fix>

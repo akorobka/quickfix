@@ -24,7 +24,7 @@
 #endif
 
 #include "Acceptor.h"
-#include "Utility.h"
+#include "Parser.h"
 #include "Session.h"
 #include "SessionFactory.h"
 #include "HttpServer.h"
@@ -134,6 +134,39 @@ Session* Acceptor::getSession
   return 0;
 }
 
+Session* Acceptor::getSession
+( Sg::sg_buf_t msg, Responder& responder )
+{
+  Sg::sg_buf_t begin = Parser::findBeginString( msg );
+  if( LIKELY(NULL != Sg::data<const char*>(begin)) )
+  {
+    Sg::split( msg, begin );
+    Sg::sg_buf_t type = Parser::findMsgType( msg );
+    const char* p = Sg::data<const char*>(type);
+    if ( LIKELY(NULL != p) &&
+         LIKELY(*p == 'A') && LIKELY(Sg::size(type) == 1) )
+    {
+      Sg::split( msg, type );
+      Sg::sg_buf_t sender = Parser::findSenderCompID( msg );
+      if( LIKELY(NULL != Sg::data<const char*>(sender)) )
+      {
+        Sg::sg_buf_t target = Parser::findTargetCompID( msg );
+        if( LIKELY(NULL != Sg::data<const char*>(target)) )
+        {
+          Sessions::iterator i = m_sessions.find( SessionID( begin,
+                                                     target, sender ) );
+          if ( i != m_sessions.end() )
+          {
+            i->second->setResponder( &responder );
+            return i->second;
+          }
+        }
+      }
+    }
+  }
+  return NULL;
+}
+
 Session* Acceptor::getSession( const SessionID& sessionID ) const
 {
   Sessions::const_iterator i = m_sessions.find( sessionID );
@@ -143,7 +176,7 @@ Session* Acceptor::getSession( const SessionID& sessionID ) const
     return 0;
 }
 
-const Dictionary* const Acceptor::getSessionSettings( const SessionID& sessionID ) const
+const Dictionary* Acceptor::getSessionSettings( const SessionID& sessionID ) const
 {
   try
   {

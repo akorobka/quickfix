@@ -41,12 +41,12 @@ TEST(copy)
   object.setField(7, "7");
 
   std::string originalString;
-  object.calculateString( originalString );
+  object.serializeTo( originalString );
   
   Group copy = object;
 
   std::string copyString;
-  copy.calculateString( copyString );
+  copy.serializeTo( copyString );
 
   CHECK_EQUAL( originalString, copyString );
 }

@@ -168,14 +168,14 @@ void MySQLLogFactory::init( const Dictionary& settings,
 
 void MySQLLogFactory::initLog( const Dictionary& settings, MySQLLog& log )
 {
-  try { log.setIncomingTable( settings.getString( MYSQL_LOG_INCOMING_TABLE ) ); }
-  catch( ConfigError& ) {}
+    try { log.setIncomingTable( settings.getString( MYSQL_LOG_INCOMING_TABLE ) ); }
+    catch( ConfigError& ) {}
 
-  try { log.setOutgoingTable( settings.getString( MYSQL_LOG_OUTGOING_TABLE ) ); }
-  catch( ConfigError& ) {}
+    try { log.setOutgoingTable( settings.getString( MYSQL_LOG_OUTGOING_TABLE ) ); }
+    catch( ConfigError& ) {}
 
-  try { log.setEventTable( settings.getString( MYSQL_LOG_EVENT_TABLE ) ); }
-  catch( ConfigError& ) {}
+    try { log.setEventTable( settings.getString( MYSQL_LOG_EVENT_TABLE ) ); }
+    catch( ConfigError& ) {}
 }
 
 void MySQLLogFactory::destroy( Log* pLog )
@@ -192,9 +192,9 @@ void MySQLLog::clear()
   if( m_pSessionID )
   {
     whereClause
-    << "BeginString = \"" << m_pSessionID->getBeginString().getValue() << "\" " 
-    << "AND SenderCompID = \"" << m_pSessionID->getSenderCompID().getValue() << "\" "
-    << "AND TargetCompID = \"" << m_pSessionID->getTargetCompID().getValue() << "\" ";
+    << "BeginString = \"" << m_pSessionID->getBeginString() << "\" " 
+    << "AND SenderCompID = \"" << m_pSessionID->getSenderCompID() << "\" "
+    << "AND TargetCompID = \"" << m_pSessionID->getTargetCompID() << "\" ";
 
     if( m_pSessionID->getSessionQualifier().size() )
       whereClause << "AND SessionQualifier = \"" << m_pSessionID->getSessionQualifier() << "\"";
@@ -238,8 +238,8 @@ void MySQLLog::insert( const std::string& table, const std::string value )
   STRING_SPRINTF( sqlTime, "%d-%02d-%02d %02d:%02d:%02d",
            year, month, day, hour, minute, second );
 
-  char* valueCopy = new char[ (value.size() * 2) + 1 ];
-  mysql_escape_string( valueCopy, value.c_str(), value.size() );
+  Util::scoped_array<char>::type valueCopy( new char[ 2 * value.size() + 1 ] );
+  mysql_escape_string( valueCopy.get(), value.c_str(), value.size() );
 
   std::stringstream queryString;
   queryString << "INSERT INTO " << table << " "
@@ -250,9 +250,9 @@ void MySQLLog::insert( const std::string& table, const std::string value )
   if( m_pSessionID )
   {
     queryString
-    << "\"" << m_pSessionID->getBeginString().getValue() << "\","
-    << "\"" << m_pSessionID->getSenderCompID().getValue() << "\","
-    << "\"" << m_pSessionID->getTargetCompID().getValue() << "\",";
+    << "\"" << m_pSessionID->getBeginString() << "\","
+    << "\"" << m_pSessionID->getSenderCompID() << "\","
+    << "\"" << m_pSessionID->getTargetCompID() << "\",";
     if( m_pSessionID->getSessionQualifier() == "" )
       queryString << "NULL" << ",";
     else
@@ -263,8 +263,7 @@ void MySQLLog::insert( const std::string& table, const std::string value )
     queryString << "NULL, NULL, NULL, NULL, ";
   }
 
-  queryString << "\"" << valueCopy << "\")";
-  delete [] valueCopy;
+  queryString << "\"" << valueCopy.get() << "\")";
 
   MySQLQuery query( queryString.str() );
   m_pConnection->execute( query );

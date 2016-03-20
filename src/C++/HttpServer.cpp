@@ -68,7 +68,7 @@ HttpServer::HttpServer( const SessionSettings& settings ) throw( ConfigError )
 
 void HttpServer::onConfigure( const SessionSettings& s )
 throw ( ConfigError )
-{  
+{
   m_port = s.get().getInt( HTTP_ACCEPT_PORT );
 }
 
@@ -128,7 +128,7 @@ bool HttpServer::onPoll()
   return true;
 }
 
-void HttpServer::onStop() 
+void HttpServer::onStop()
 {
 }
 
@@ -140,7 +140,7 @@ void HttpServer::onConnect( SocketServer& server, int a, int s )
   m_pServer->getMonitor().drop( s );
 }
 
-void HttpServer::onWrite( SocketServer& server, int s ) 
+void HttpServer::onWrite( SocketServer& server, int s )
 {
 }
 
@@ -149,11 +149,13 @@ bool HttpServer::onData( SocketServer& server, int s )
   return true;
 }
 
-void HttpServer::onDisconnect( SocketServer&, int s ) 
+void HttpServer::onDisconnect( SocketServer&, int s )
 {
 }
 
-void HttpServer::onError( SocketServer& ) {}
+void HttpServer::onError( SocketServer& )
+{
+}
 
 void HttpServer::onTimeout( SocketServer& )
 {

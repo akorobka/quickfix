@@ -73,7 +73,7 @@ public:
         (DateTime)time );
   }
 
-  static bool isInSameRange( const UtcTimeOnly& start,
+  static inline bool isInSameRange( const UtcTimeOnly& start,
                              const UtcTimeOnly& end,
                              const DateTime& time1,
                              const DateTime& time2 )
@@ -83,7 +83,7 @@ public:
         (DateTime)time1, (DateTime)time2 );
   }
 
-  static bool isInSameRange( const UtcTimeOnly& startTime,
+  static inline bool isInSameRange( const UtcTimeOnly& startTime,
                              const UtcTimeOnly& endTime,
                              int startDay,
                              int endDay,
@@ -129,7 +129,7 @@ public:
         (DateTime)time );
   }
 
-  static bool isInSameRange( const LocalTimeOnly& start,
+  static inline bool isInSameRange( const LocalTimeOnly& start,
                              const LocalTimeOnly& end,
                              const DateTime& time1,
                              const DateTime& time2 )
@@ -139,7 +139,7 @@ public:
         (DateTime)time1, (DateTime)time2 );
   }
 
-  static bool isInSameRange( const LocalTimeOnly& startTime,
+  static inline bool isInSameRange( const LocalTimeOnly& startTime,
                              const LocalTimeOnly& endTime,
                              int startDay,
                              int endDay,
@@ -181,7 +181,7 @@ private:
                              int endDay,
                              const DateTime& time1,
                              const DateTime& time2 );
-public:  
+public:
   bool isInRange( const DateTime& dateTime, int day )
   {
     if( m_startDay < 0 && m_endDay < 0 )

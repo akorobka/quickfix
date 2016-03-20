@@ -35,7 +35,10 @@ namespace FIX
   {
   public:
     virtual ~Responder() {}
+    /// Send single buffer
     virtual bool send( const std::string& ) = 0;
+    /// Send multiple buffers
+    virtual bool send( Sg::sg_buf_ptr bufs, int n ) = 0;
     virtual void disconnect() = 0;
   };
 }
