@@ -56,7 +56,7 @@
       <TypeLibraryName>.\Release/ut.tlb</TypeLibraryName>
     </Midl>
     <ClCompile>
-      <AdditionalOptions>"  /I /src/socket"  "  /I /src/socket"  "  /I /src/socket"  "  /I /src/socket"  %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>"  /I /src/socket"  "  /I /src/socket"  "  /I /src/socket"  "  /I /src/socket"  /FS %(AdditionalOptions)</AdditionalOptions>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\src\C++;$(SolutionDir)\src\C++\test;$(SolutionDir)\UnitTest++\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -94,7 +94,7 @@
       <TypeLibraryName>.\Debug/ut.tlb</TypeLibraryName>
     </Midl>
     <ClCompile>
-      <AdditionalOptions>"  /I /src/socket"  "  /I /src/socket"  "  /I /src/socket"  "  /I /src/socket"  %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>"  /I /src/socket"  "  /I /src/socket"  "  /I /src/socket"  "  /I /src/socket"  /FS %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\src\C++;$(SolutionDIr)\src\C++\test;$(SolutionDir)\UnitTest++\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
