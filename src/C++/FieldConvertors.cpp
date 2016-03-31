@@ -100,7 +100,7 @@ int HEAVYUSE DoubleConvertor::Proxy::generate(char* buf) const
       if (precision) {
         if (!m_round && value != 0)
         {
-          frac = (value - whole) * pwr10[MaxPrecision + 1 - count];
+          frac = static_cast<uint64_t>((value - whole) * pwr10[MaxPrecision + 1 - count]);
           if (frac) {
             int64_t rem = frac % 10;
             precision =

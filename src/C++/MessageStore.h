@@ -105,6 +105,7 @@ class MemoryStore : public MessageStore
 public:
   MemoryStore() : m_nextSenderMsgSeqNum( 1 ), m_nextTargetMsgSeqNum( 1 ) {}
 
+  using MessageStore::set;
   bool set( int, const std::string& ) throw ( IOException );
 
   void get( int, int, std::vector < std::string > & ) const throw ( IOException );

@@ -140,10 +140,10 @@ class Message : public FieldMap
       m_end(String::c_str(s) + String::size(s)) {}
 
     char getTagLength() const
-    { return m_length + 1; }
+    { return static_cast<char>(m_length + 1); }
 
     short getTagChecksum() const
-    { return m_csum + (int)'='; }
+    { return static_cast<short>(m_csum + (int)'='); }
 
     operator bool () const
     { return m_start + m_pos < m_end; }

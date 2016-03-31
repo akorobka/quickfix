@@ -37,6 +37,10 @@
 #include <boost/container/flat_set.hpp>
 #endif
 
+#ifdef _MSC_VER
+#pragma warning( disable : 4127 ) // DISABLE warning C4127: conditional expression is constant
+#endif
+
 namespace FIX 
 {
 namespace Container {
@@ -1947,6 +1951,10 @@ class flatSet {
 
 } // Container
 }
+
+#ifdef _MSC_VER
+#pragma warning( default: 4127 ) // RE-ENABLE warning C4127: conditional expression is constant
+#endif
 
 #endif //FIX_CONTAINER_H
 

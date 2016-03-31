@@ -143,6 +143,7 @@ public:
   void clear() {}
   void backup() {}
 
+  using Log::onIncoming;
   void onIncoming( const std::string& value )
   {
     if ( !m_incoming ) return ;
@@ -154,6 +155,7 @@ public:
               << "  (" << value << ")" << std::endl;
   }
 
+  using Log::onOutgoing;
   void onOutgoing( const std::string& value )
   {
     if ( !m_outgoing ) return ;

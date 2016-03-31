@@ -33,6 +33,10 @@
 #include <cmath>
 #include <limits>
 
+#ifdef _MSC_VER
+#pragma warning( disable : 4706 ) // DISABLE warning C4706: assignment within conditional expression
+#endif
+
 namespace FIX
 {
 
@@ -827,8 +831,8 @@ struct UtcTimeStampConvertor : public UtcConvertorBase
   {
     char buffer[ MaxValueSize ];
     union {
-	char*     pc;
-	uint16_t* pu;
+      char*     pc;
+      uint16_t* pu;
     } b = { buffer };
     int year, month, day, hour, minute, second, millis;
 
@@ -850,8 +854,8 @@ struct UtcTimeStampConvertor : public UtcConvertorBase
 
       if (showMilliseconds)
       {
-	*b.pc++ = '.';
-	*b.pc++ = '0' + (unsigned)millis / 100;
+        *b.pc++ = '.';
+        *b.pc++ = '0' + static_cast<char>((unsigned)millis / 100);
         *b.pu   = IntConvertor::padded_numbers[(unsigned)millis % 100 ].u;
         result.append(buffer, 21);
       }
@@ -953,8 +957,8 @@ struct UtcTimeOnlyConvertor : public UtcConvertorBase
   {
     char buffer[ MaxValueSize ];
     union {
-	char*     pc;
-	uint16_t* pu;
+      char*     pc;
+      uint16_t* pu;
     } b = { buffer };
     int hour, minute, second, millis;
 
@@ -969,7 +973,7 @@ struct UtcTimeOnlyConvertor : public UtcConvertorBase
     if (showMilliseconds)
     {
       *b.pc++ = '.';
-      *b.pc++ = '0' + (unsigned)millis / 100;
+      *b.pc++ = '0' + static_cast<char>((unsigned)millis / 100);
       *b.pu   = IntConvertor::padded_numbers[(unsigned)millis % 100 ].u;
       result.append(buffer, 12);
     } else
@@ -1160,5 +1164,9 @@ typedef StringConvertor XMLDATA_CONVERTOR;
 typedef StringConvertor LANGUAGE_CONVERTOR;
 typedef CheckSumConvertor CHECKSUM_CONVERTOR;
 }
+
+#ifdef _MSC_VER
+#pragma warning( default : 4706 ) // RE_ENABLE warning C4706: assignment within conditional expression
+#endif
 
 #endif //FIX_FIELDCONVERTORS_H

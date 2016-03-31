@@ -30,6 +30,10 @@
 #include <string>
 #include <time.h>
 
+#ifdef _MSC_VER
+#pragma warning( disable : 4201 ) // DISABLE warning C4201: nonstandard extension used : nameless struct/union
+#endif
+
 namespace FIX
 {
 /*! \addtogroup user
@@ -706,5 +710,9 @@ enum Type
 };
 }
 }
+
+#ifdef _MSC_VER
+#pragma warning( default : 4201 ) // RE-ENABLE warning C4201: nonstandard extension used : nameless struct/union
+#endif
 
 #endif //FIX_FIELDTYPES_H

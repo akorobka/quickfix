@@ -31,6 +31,10 @@
 #include <iostream>
 #include <string>
 
+#ifdef _MSC_VER
+#pragma warning( disable : 4125 ) // DISABLE warning C4125: decimal digit terminates octal escape sequence
+#endif
+
 namespace FIX
 {
 /// Parses %FIX messages off an input stream.
@@ -334,4 +338,9 @@ private:
   int m_bodyLength;
 };
 }
+
+#ifdef _MSC_VER
+#pragma warning( default: 4125 ) // RE-ENABLE warning C4125: decimal digit terminates octal escape sequence
+#endif
+
 #endif //FIX_PARSER_H

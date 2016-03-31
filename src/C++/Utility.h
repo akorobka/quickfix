@@ -150,6 +150,10 @@ typedef int ssize_t;
 #include <tbb/atomic.h>
 #endif
 
+ #ifdef _MSC_VER
+#pragma warning( disable : 4706 ) // DISABLE warning C4706: assignment within conditional expression
+#endif
+
 #if defined(_MSC_VER)
 #define HAVE_FSCANF_S 1
 #define FILE_FSCANF fscanf_s
@@ -174,7 +178,9 @@ typedef int ssize_t;
 #define LIKELY(x) (x)
 #define MAY_ALIAS
 #define PURE_DECL
+#ifndef FORCE_INLINE
 #define FORCE_INLINE
+#endif
 #elif defined(__GNUC__)
 #define ALIGN_DECL(x) __attribute__ ((aligned(x)))
 #define NOTHROW __attribute__ ((nothrow))
@@ -1356,7 +1362,7 @@ namespace FIX
 
       static inline char NOTHROW length(int field)
       {
-        return Util::PositiveInt::numDigits(field) + 1;
+        return static_cast<char>(Util::PositiveInt::numDigits(field) + 1);
       }
 
       static inline short NOTHROW checkSum(int field)
@@ -2023,6 +2029,10 @@ using std::exit;
 using std::strtod;
 using std::strtol;
 using std::strerror;
+#endif
+
+#ifdef _MSC_VER
+#pragma warning( default : 4706 ) // RE-ENABLE warning C4706: assignment within conditional expression
 #endif
 
 #endif
