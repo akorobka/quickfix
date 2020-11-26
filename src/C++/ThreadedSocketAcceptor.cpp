@@ -98,7 +98,16 @@ THROW_DECL( RuntimeError )
     const int rcvBufSize = settings.has( SOCKET_RECEIVE_BUFFER_SIZE ) ?
       settings.getInt( SOCKET_RECEIVE_BUFFER_SIZE ) : 0;
 
-    const size_t affinity = (size_t)-1;
+    int socket = socket_createAcceptor( port, reuseAddress );
+    if( socket < 0 )
+    {
+      SocketException e;
+      socket_close( socket );
+      throw RuntimeError( "Unable to create, bind, or listen to port " 
+                         + IntConvertor::convert( (unsigned short)port ) + " (" + e.what() + ")" );
+    }
+
+    size_t affinity = (size_t)-1;
     if (settings.has( THREAD_AFFINITY ))
     {
       if (settings.getString( THREAD_AFFINITY, true ) == "SOCKET")
@@ -117,14 +126,6 @@ THROW_DECL( RuntimeError )
         settings.getInt( THREAD_AFFINITY );
     }
 
-    int socket = socket_createAcceptor( port, reuseAddress );
-    if( socket < 0 )
-    {
-      SocketException e;
-      socket_close( socket );
-      throw RuntimeError( "Unable to create, bind, or listen to port " 
-                         + IntConvertor::convert( (unsigned short)port ) + " (" + e.what() + ")" );
-    }
     if( noDelay )
       socket_setsockopt( socket, TCP_NODELAY );
     if( sendBufSize )
